@@ -28,5 +28,6 @@ extern struct protocol ieee80211_ops;
 extern struct protocol QinQ_ops;
 extern struct protocol mpls_uc_ops;
 extern struct protocol nlmsg_ops;
+extern struct protocol dns_ops;
 
 #endif /* PROTOS_H */

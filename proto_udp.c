@@ -12,6 +12,7 @@
 #include "protos.h"
 #include "lookup.h"
 #include "pkt_buff.h"
+#include "dissector_eth.h"
 
 struct udphdr {
 	uint16_t source;
@@ -54,7 +55,9 @@ static void udp(struct pkt_buff *pkt)
 	}
 	tprintf("Len (%u Bytes, %zd Bytes Data), ", ntohs(udp->len), len);
 	tprintf("CSum (0x%.4x)", ntohs(udp->check));
-	tprintf(" ]\n");
+    tprintf(" ]\n");
+    // XXX need a way to specify lay7 protocol? this is hardcoded to DNS
+    pkt_set_proto(pkt, &eth_lay7, 0);
 }
 
 static void udp_less(struct pkt_buff *pkt)

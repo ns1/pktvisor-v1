@@ -12,6 +12,7 @@
 
 extern struct hash_table eth_lay2;
 extern struct hash_table eth_lay3;
+extern struct hash_table eth_lay7;
 
 extern void dissector_init_ethernet(int fnttype);
 extern void dissector_cleanup_ethernet(void);
