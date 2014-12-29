@@ -57,7 +57,7 @@ static void udp(struct pkt_buff *pkt)
 	tprintf("CSum (0x%.4x)", ntohs(udp->check));
     tprintf(" ]\n");
     // XXX need a way to specify lay7 protocol? this is hardcoded to DNS
-    pkt_set_proto(pkt, &eth_lay7, 0);
+    pkt_set_proto(pkt, &eth_lay7, 0x01);
 }
 
 static void udp_less(struct pkt_buff *pkt)

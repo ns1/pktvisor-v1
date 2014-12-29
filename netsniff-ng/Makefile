@@ -1,13 +1,14 @@
 netsniff-ng-libs =	$(shell pkg-config --libs libnl-3.0) \
 			$(shell pkg-config --libs libnl-genl-3.0) \
-			-lpthread
+                        -lpthread \
+                        -lldns
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 netsniff-ng-libs +=	-lpcap
 endif
 ifeq ($(CONFIG_GEOIP), 1)
 netsniff-ng-libs +=	-lGeoIP \
-			-lz
+                        -lz
 endif
 
 netsniff-ng-objs =	dissector.o \
