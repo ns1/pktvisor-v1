@@ -53,7 +53,16 @@ static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
 
 		proto = pkt->proto;
 		pkt->proto = NULL;
-		proto->process(pkt);
+
+        // visit can run accumulators, etc on the data
+        // if it exists, it should put the data back
+        if (unlikely(proto->visit)) {
+            proto->visit(pkt, NULL);
+        }
+
+        proto->process(pkt);
+
+
 	}
 
 	if (end && likely(end->process))

@@ -59,7 +59,9 @@ static void udp(struct pkt_buff *pkt)
 	tprintf("Len (%u Bytes, %zd Bytes Data), ", ntohs(udp->len), len);
 	tprintf("CSum (0x%.4x)", ntohs(udp->check));
     tprintf(" ]\n");
-    // XXX need a way to specify lay7 protocol? this is hardcoded to DNS
+    // XXX this key is hard coded in proto_dns.c. currently this will ALWAYS
+    // process UDP traffic as DNS, so it assumes an appropriate bpf filter
+    // has already been setup to just capture DNS
     pkt_set_proto(pkt, &eth_lay7, 0x01);
 }
 
