@@ -19,7 +19,17 @@ struct pkt_buff {
 	uint8_t      *tail;
 	unsigned int  size;
 
-	struct protocol *proto;
+    struct protocol *proto;
+
+    /* note - these point into data */
+
+    /* add layer2/3 info */
+    uint32_t *src_addr;
+    uint32_t *dest_addr;
+    /* add udp info */
+    uint16_t *udp_src_port;
+    uint16_t *udp_dest_port;
+
 };
 
 static inline struct pkt_buff *pkt_alloc(uint8_t *packet, unsigned int len)
@@ -30,7 +40,12 @@ static inline struct pkt_buff *pkt_alloc(uint8_t *packet, unsigned int len)
 	pkt->data = packet;
 	pkt->tail = packet + len;
 	pkt->size = len;
-	pkt->proto = NULL;
+    pkt->proto = NULL;
+
+    pkt->src_addr = NULL;
+    pkt->dest_addr = NULL;
+    pkt->udp_src_port = NULL;
+    pkt->udp_dest_port = NULL;
 
 	return pkt;
 }

@@ -50,6 +50,9 @@ static void ipv4(struct pkt_buff *pkt)
 	h_tot_len = ntohs(ip->h_tot_len);
 	csum = calc_csum(ip, ip->h_ihl * 4, 0);
 
+    pkt->src_addr = &ip->h_saddr;
+    pkt->dest_addr = &ip->h_daddr;
+
 	inet_ntop(AF_INET, &ip->h_saddr, src_ip, sizeof(src_ip));
 	inet_ntop(AF_INET, &ip->h_daddr, dst_ip, sizeof(dst_ip));
 

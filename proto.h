@@ -19,7 +19,8 @@ struct protocol {
 	/* Needs to be filled out by user */
 	unsigned int key;
 	void (*print_full)(struct pkt_buff *pkt);
-	void (*print_less)(struct pkt_buff *pkt);
+    void (*print_less)(struct pkt_buff *pkt);
+    void (*visit)(struct pkt_buff *pkt, void *ctxt);
 	/* Used by program logic */
 	struct protocol *next;
 	void (*process)   (struct pkt_buff *pkt);

@@ -31,6 +31,9 @@ static void udp(struct pkt_buff *pkt)
 	if (udp == NULL)
 		return;
 
+    pkt->udp_src_port = &udp->source;
+    pkt->udp_dest_port = &udp->dest;
+
 	len = ntohs(udp->len) - sizeof(*udp);
 	src = ntohs(udp->source);
 	dest = ntohs(udp->dest);
