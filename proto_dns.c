@@ -15,19 +15,6 @@
 #include "pkt_buff.h"
 #include "ldns/ldns.h"
 
-/*
-static void _hex(uint8_t *ptr, size_t len)
-{
-        if (!len)
-                return;
-
-        tprintf(" [ DNS ");
-        for (; ptr && len-- > 0; ptr++)
-                tprintf(" %.2x", *ptr);
-        tprintf(" ]\n");
-}
-*/
-
 void dns(struct pkt_buff *pkt)
 {
         size_t   len = pkt_len(pkt);
