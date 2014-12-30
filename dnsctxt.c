@@ -6,6 +6,34 @@
 
 // uthash LRU: https://gist.github.com/jehiah/900846
 
+void dnsctxt_init(struct dnsctxt *ctxt) {
+    ctxt->source_table = NULL;
+    ctxt->dest_table = NULL;
+    ctxt->query_name_table = NULL;
+
+    ctxt->query_count = 0;
+    ctxt->reply_count = 0;
+    ctxt->malformed_count = 0;
+}
+
+void dnsctxt_free(struct dnsctxt *ctxt) {
+    struct int32_entry *entry, *tmp_entry;
+    struct str_entry *sentry, *tmp_sentry;
+
+    HASH_ITER(hh, ctxt->source_table, entry, tmp_entry) {
+        HASH_DELETE(hh, ctxt->source_table, entry);
+        free(entry);
+    }
+    HASH_ITER(hh, ctxt->dest_table, entry, tmp_entry) {
+        HASH_DELETE(hh, ctxt->dest_table, entry);
+        free(entry);
+    }
+    HASH_ITER(hh, ctxt->query_name_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->query_name_table, sentry);
+        free(sentry);
+    }
+}
+
 struct int32_entry *lru_get_int(struct int32_entry *table, uint32_t key)
 {
     struct int32_entry *entry;

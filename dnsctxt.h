@@ -34,32 +34,15 @@ struct dnsctxt {
     struct int32_entry *source_table;
     struct int32_entry *dest_table;
     struct str_entry *query_name_table;
+
+    uint64_t query_count;
+    uint64_t reply_count;
+    uint64_t malformed_count;
+
 };
 
-void dnsctxt_init(struct dnsctxt *ctxt) {
-    ctxt->source_table = NULL;
-    ctxt->dest_table = NULL;
-    ctxt->query_name_table = NULL;
-}
-
-void dnsctxt_free(struct dnsctxt *ctxt) {
-    struct int32_entry *entry, *tmp_entry;
-    struct str_entry *sentry, *tmp_sentry;
-
-    HASH_ITER(hh, ctxt->source_table, entry, tmp_entry) {
-        HASH_DELETE(hh, ctxt->source_table, entry);
-        free(entry);
-    }
-    HASH_ITER(hh, ctxt->dest_table, entry, tmp_entry) {
-        HASH_DELETE(hh, ctxt->dest_table, entry);
-        free(entry);
-    }
-    HASH_ITER(hh, ctxt->query_name_table, sentry, tmp_sentry) {
-        HASH_DELETE(hh, ctxt->query_name_table, sentry);
-        free(sentry);
-    }
-}
-
+void dnsctxt_init(struct dnsctxt *ctxt);
+void dnsctxt_free(struct dnsctxt *ctxt);
 void dnsctxt_count_ip(struct int32_entry *table, uint32_t key);
 void dnsctxt_count_name(struct str_entry *table, char *name);
 

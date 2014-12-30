@@ -40,7 +40,7 @@ int dissector_set_print_type(void *ptr, int type)
 }
 
 static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
-			   struct protocol *end)
+               struct protocol *end, void *ctxt)
 {
 	struct protocol *proto;
 
@@ -57,7 +57,7 @@ static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
         // visit can run accumulators, etc on the data
         // if it exists, it should put the data back
         if (unlikely(proto->visit)) {
-            proto->visit(pkt, NULL);
+            proto->visit(pkt, ctxt);
         }
 
         proto->process(pkt);
@@ -69,7 +69,7 @@ static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
 		end->process(pkt);
 }
 
-void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode)
+void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, void *ctxt)
 {
 	struct protocol *proto_start, *proto_end;
 	struct pkt_buff *pkt;
@@ -101,7 +101,7 @@ void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode)
 		break;
 	};
 
-	dissector_main(pkt, proto_start, proto_end);
+    dissector_main(pkt, proto_start, proto_end, ctxt);
 
 	switch (mode) {
 	case PRINT_HEX:
