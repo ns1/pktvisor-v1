@@ -62,6 +62,12 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
 
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
 
+    dns_ctxt->seen++;
+
+    if (pkt->pkttype == PACKET_HOST) {
+        dns_ctxt->incoming++;
+    }
+
     if (!len)
         return;
 
@@ -71,6 +77,12 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     src_port = ntohs(*pkt->udp_src_port);
     dest_port = ntohs(*pkt->udp_dest_port);
     */
+
+    if (pkt->pkttype != PACKET_HOST) {
+        // outgoing: we don't do a full DNS wire decode, just
+        // look for DNS status code
+        // XXX
+    }
 
     status = ldns_wire2pkt(&dns_pkt, ptr, len);
     if (status != LDNS_STATUS_OK) {

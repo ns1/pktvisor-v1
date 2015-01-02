@@ -844,7 +844,7 @@ static void walk_t3_block(struct block_desc *pbd, struct ctx *ctx,
 		uint8_t *packet = ((uint8_t *) hdr + hdr->tp_mac);
 		pcap_pkthdr_t phdr;
 
-		if (ctx->packet_type != -1)
+        if (ctx->packet_type != -1)
 			if (ctx->packet_type != sll->sll_pkttype)
 				goto next;
 
@@ -859,7 +859,7 @@ static void walk_t3_block(struct block_desc *pbd, struct ctx *ctx,
 						    pcap_get_length(&phdr, ctx->magic));
 			if (unlikely(ret != (int) pcap_get_total_length(&phdr, ctx->magic)))
 				panic("Write error to pcap!\n");
-		}
+        }
 
 		__show_frame_hdr(packet, hdr->tp_snaplen, ctx->link_type, sll,
 				 hdr, ctx->print_mode, true);
@@ -1006,7 +1006,8 @@ static void recv_only_or_dump(struct ctx *ctx)
 				       ctx->link_type, hdr, ctx->print_mode);
 
 			dissector_entry_point(packet, hdr->tp_h.tp_snaplen,
-					      ctx->link_type, ctx->print_mode);
+                          ctx->link_type, ctx->print_mode,
+                          hdr->s_ll.sll_pkttype, &ctx->dns_ctxt);
 
 			if (frame_count_max != 0) {
 				if (unlikely(frame_count >= frame_count_max)) {
@@ -1036,16 +1037,19 @@ next:
 	bug_on(gettimeofday(&end, NULL));
 	timersub(&end, &start, &diff);
 
-	if (!(ctx->dump_dir && ctx->print_mode == PRINT_NONE)) {
+    if (!(ctx->dump_dir && ctx->print_mode == PRINT_NONE)) {
 		sock_rx_net_stats(sock, frame_count);
 
 		printf("\r%12lu  sec, %lu usec in total\n",
                diff.tv_sec, diff.tv_usec);
 
-        printf("dns queries: %ld, replies: %ld, malformed: %ld\n",
-               ctx->dns_ctxt.query_count,
-               ctx->dns_ctxt.reply_count,
-               ctx->dns_ctxt.malformed_count);
+        printf("\nDNS Results:\n");
+        printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
+        printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
+        printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+        printf("\r%12lu  DNS Query\n", ctx->dns_ctxt.query_count);
+        printf("\r%12lu  DNS Reply\n", ctx->dns_ctxt.reply_count);
+        printf("\r%12lu  DNS Malformed\n", ctx->dns_ctxt.malformed_count);
 
 	} else {
 		printf("\n\n");

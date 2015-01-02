@@ -35,9 +35,14 @@ struct dnsctxt {
     struct int32_entry *dest_table;
     struct str_entry *query_name_table;
 
+    // general packet counters proto_dns handles
+    uint64_t seen;
+    uint64_t incoming;
+
+    // parsed DNS counters
+    uint64_t malformed_count;
     uint64_t query_count;
     uint64_t reply_count;
-    uint64_t malformed_count;
 
 };
 
