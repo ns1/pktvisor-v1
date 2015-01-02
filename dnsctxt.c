@@ -37,12 +37,28 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
     }
 }
 
+int _sort_ip_by_count(void *a, void *b) {
+    struct int32_entry *left = (struct int32_entry *)a;
+    struct int32_entry *right = (struct int32_entry *)b;
+    if (left->count == right->count)
+        return 0;
+    else if (left->count > right->count)
+        return -1;
+    else
+        return 1;
+}
+
 void _print_table_ip(struct int32_entry *table) {
     struct int32_entry *entry, *tmp_entry;
     char ip[INET_ADDRSTRLEN];
+    unsigned int i = 0;
+
+    HASH_SORT(table, _sort_ip_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
-        printf("%s: %lu\n", ip, entry->count);
+        printf("%16s: %lu\n", ip, entry->count);
+        if (++i > MAX_SUMMARY_SIZE)
+            break;
     }
 }
 

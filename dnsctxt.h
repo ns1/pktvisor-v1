@@ -15,6 +15,9 @@
 // XXX need to make this per table
 #define MAX_LRU_SIZE 10000
 
+// max summary table size
+#define MAX_SUMMARY_SIZE 20
+
 // accumulator hash table keyed by ip address (in int form)
 // or other 32 bit key
 struct int32_entry {
