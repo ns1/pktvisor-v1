@@ -9,7 +9,7 @@ MISSING_PKG_CONFIG=0
 MISSING_DEFS=0
 MISSING_NACL=0
 
-TOOLS="netsniff-ng trafgen astraceroute flowtop ifpps bpfc curvetun mausezahn"
+TOOLS="dnstop-ng netsniff-ng trafgen astraceroute flowtop ifpps bpfc curvetun mausezahn"
 TOOLS_NOBUILD=""
 
 HAVE_LIBPCAP=0
