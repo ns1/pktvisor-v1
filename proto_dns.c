@@ -19,7 +19,7 @@
 #include "dnsctxt.h"
 
 
-void print_dns(struct pkt_buff *pkt)
+void print_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
     uint8_t *ptr = pkt_pull(pkt, len);
@@ -98,14 +98,11 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     free(pkt_str);
     ldns_pkt_free(dns_pkt);
 
-    // NEED TO RESET pkt data for potential print_dns run
-    pkt->data -= len;
-
 }
 
-static void print_dns_less(struct pkt_buff *pkt)
+static void print_dns_less(struct pkt_buff *pkt, void *ctxt)
 {
-    print_dns(pkt);
+    print_dns(pkt, ctxt);
 }
 
 struct protocol dns_ops = {

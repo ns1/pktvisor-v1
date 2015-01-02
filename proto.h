@@ -18,12 +18,12 @@ struct pkt_buff;
 struct protocol {
 	/* Needs to be filled out by user */
 	unsigned int key;
-	void (*print_full)(struct pkt_buff *pkt);
-    void (*print_less)(struct pkt_buff *pkt);
+    void (*print_full)(struct pkt_buff *pkt, void *ctxt);
+    void (*print_less)(struct pkt_buff *pkt, void *ctxt);
     void (*visit)(struct pkt_buff *pkt, void *ctxt);
 	/* Used by program logic */
-	struct protocol *next;
-	void (*process)   (struct pkt_buff *pkt);
+    struct protocol *next;
+    void (*process)   (struct pkt_buff *pkt, void *ctxt);
 };
 
 extern void empty(struct pkt_buff *pkt);

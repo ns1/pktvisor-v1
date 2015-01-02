@@ -31,7 +31,7 @@
 #define IP_OPT_CLASS(x)       (((x) & 0x60) >> 5)
 #define IP_OPT_NUMBER(x)       ((x) & 0x1F)
 
-static void ipv4(struct pkt_buff *pkt)
+static void ipv4(struct pkt_buff *pkt, void *ctxt)
 {
 	uint16_t csum, frag_off, h_tot_len;
 	char src_ip[INET_ADDRSTRLEN];
@@ -169,7 +169,7 @@ out:
 	pkt_set_proto(pkt, &eth_lay3, ip->h_protocol);
 }
 
-static void ipv4_less(struct pkt_buff *pkt)
+static void ipv4_less(struct pkt_buff *pkt, void *ctxt)
 {
 	char src_ip[INET_ADDRSTRLEN];
 	char dst_ip[INET_ADDRSTRLEN];
@@ -195,8 +195,32 @@ static void ipv4_less(struct pkt_buff *pkt)
 	pkt_set_proto(pkt, &eth_lay3, ip->h_protocol);
 }
 
+static void ipv4_visit(struct pkt_buff *pkt, void *ctxt)
+{
+    char src_ip[INET_ADDRSTRLEN];
+    char dst_ip[INET_ADDRSTRLEN];
+    struct ipv4hdr *ip = (struct ipv4hdr *) pkt_pull(pkt, sizeof(*ip));
+
+    if (!ip)
+        return;
+
+    inet_ntop(AF_INET, &ip->h_saddr, src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, &ip->h_daddr, dst_ip, sizeof(dst_ip));
+
+    /* cut off IP options and everything that is not part of IPv4 payload */
+    pkt_pull(pkt, max_t(uint8_t, ip->h_ihl, sizeof(*ip) / sizeof(uint32_t))
+        * sizeof(uint32_t) - sizeof(*ip));
+    /* XXX there coul still be an Ethernet trailer included or others */
+#if 0
+    pkt_trim(pkt, pkt_len(pkt) - min(pkt_len(pkt),
+         (ntohs(ip->h_tot_len) - ip->h_ihl * sizeof(uint32_t))));
+#endif
+    pkt_set_proto(pkt, &eth_lay3, ip->h_protocol);
+}
+
 struct protocol ipv4_ops = {
 	.key = 0x0800,
 	.print_full = ipv4,
-	.print_less = ipv4_less,
+    .print_less = ipv4_less,
+    .visit = ipv4_visit
 };
