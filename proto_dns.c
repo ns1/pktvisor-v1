@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <netinet/in.h>    /* for ntohs() */
+#include <linux/if_packet.h>
+
 #include <ldns/ldns.h>
 
 #include "proto.h"

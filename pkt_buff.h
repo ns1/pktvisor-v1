@@ -21,6 +21,8 @@ struct pkt_buff {
 
     struct protocol *proto;
 
+    unsigned char pkttype;
+
     /* note - these point into data */
 
     /* add layer2/3 info */
@@ -41,6 +43,8 @@ static inline struct pkt_buff *pkt_alloc(uint8_t *packet, unsigned int len)
 	pkt->tail = packet + len;
 	pkt->size = len;
     pkt->proto = NULL;
+
+    pkt->pkttype = 0;
 
     pkt->src_addr = NULL;
     pkt->dest_addr = NULL;

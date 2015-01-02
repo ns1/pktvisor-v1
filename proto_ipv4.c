@@ -163,7 +163,6 @@ static void ipv4(struct pkt_buff *pkt)
 out:
 	/* cut off everything that is not part of IPv4 payload */
 	/* XXX there could still be an Ethernet trailer included or others */
-
 	pkt_trim(pkt, pkt_len(pkt) - min(pkt_len(pkt),
 		 (ntohs(ip->h_tot_len) - ip->h_ihl * sizeof(uint32_t))));
 

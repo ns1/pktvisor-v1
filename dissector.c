@@ -55,7 +55,8 @@ static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
 		pkt->proto = NULL;
 
         // visit can run accumulators, etc on the data
-        // if it exists, it should put the data back
+        // if it exists, it should put the data back after pkt_pull
+        // so process() can print (if that's turned on)
         if (unlikely(proto->visit)) {
             proto->visit(pkt, ctxt);
         }
@@ -69,7 +70,7 @@ static void dissector_main(struct pkt_buff *pkt, struct protocol *start,
 		end->process(pkt);
 }
 
-void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, void *ctxt)
+void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, unsigned char pkttype, void *ctxt)
 {
 	struct protocol *proto_start, *proto_end;
 	struct pkt_buff *pkt;
@@ -77,7 +78,8 @@ void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, 
 	if (mode == PRINT_NONE)
 		return;
 
-	pkt = pkt_alloc(packet, len);
+    pkt = pkt_alloc(packet, len);
+    pkt->pkttype = pkttype;
 
 	switch (linktype) {
 	case LINKTYPE_EN10MB:

@@ -61,7 +61,8 @@ static void udp(struct pkt_buff *pkt)
     tprintf(" ]\n");
     // XXX this key is hard coded in proto_dns.c. currently this will ALWAYS
     // process UDP traffic as DNS, so it assumes an appropriate bpf filter
-    // has already been setup to just capture DNS
+    // has already been setup to just capture DNS. to fix this, we'd need to
+    // pass some sort of context with commandline options or similar.
     pkt_set_proto(pkt, &eth_lay7, 0x01);
 }
 
