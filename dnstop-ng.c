@@ -69,7 +69,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcsqXlvhF:RGAP:Vu:g:T:DBU";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZsqXlvhF:RGAP:Vu:g:T:DBU";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
@@ -97,7 +97,8 @@ static const struct option long_options[] = {
 	{"notouch-irq",		no_argument,		NULL, 'Q'},
 	{"dump-pcap-types",	no_argument,		NULL, 'D'},
 	{"dump-bpf",		no_argument,		NULL, 'B'},
-	{"silent",		no_argument,		NULL, 's'},
+    {"silent",		no_argument,		NULL, 's'},
+    {"normal",		no_argument,		NULL, 'Z'},
 	{"less",		no_argument,		NULL, 'q'},
 	{"hex",			no_argument,		NULL, 'X'},
 	{"ascii",		no_argument,		NULL, 'l'},
@@ -109,8 +110,9 @@ static const struct option long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
-static const char *copyright = "Please report bugs to <bugs@netsniff-ng.org>\n"
-	"Copyright (C) 2009-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
+static const char *copyright = "Please report bugs to https://github.com/nsone\n"
+    "Copyright (C) 2015 NSONE, Inc. <dev@nsone.net>\n"
+    "Copyright (C) 2009-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
 	"Copyright (C) 2009-2012 Emmanuel Roullit <emmanuel.roullit@gmail.com>\n"
 	"Copyright (C) 2012 Markus Amend <markus@netsniff-ng.org>\n"
 	"Swiss federal institute of technology (ETH Zurich)\n"
@@ -1077,7 +1079,7 @@ static void init_ctx(struct ctx *ctx)
 	ctx->packet_type = -1;
 
 	ctx->magic = ORIGINAL_TCPDUMP_MAGIC;
-	ctx->print_mode = PRINT_NORM;
+    ctx->print_mode = PRINT_NONE;
 	ctx->pcap = PCAP_OPS_SG;
 
 	ctx->dump_mode = DUMP_INTERVAL_TIME;
@@ -1104,9 +1106,9 @@ static void destroy_ctx(struct ctx *ctx)
 
 static void __noreturn help(void)
 {
-	printf("netsniff-ng %s, the packet sniffing beast\n", VERSION_STRING);
+    printf("dnstop-ng %s", VERSION_STRING);
 	puts("http://www.netsniff-ng.org\n\n"
-	     "Usage: netsniff-ng [options] [filter-expression]\n"
+         "Usage: dnstop-ng [options] [filter-expression]\n"
 	     "Options:\n"
 	     "  -i|-d|--dev|--in <dev|pcap|->  Input source as netdev, pcap or pcap stdin\n"
 	     "  -o|--out <dev|pcap|dir|cfg|->  Output sink as netdev, pcap, directory, trafgen, or stdout\n"
@@ -1135,7 +1137,8 @@ static void __noreturn help(void)
 	     "  -H|--prio-high                 Make this high priority process\n"
 	     "  -Q|--notouch-irq               Do not touch IRQ CPU affinity of NIC\n"
 	     "  -s|--silent                    Do not print captured packets\n"
-	     "  -q|--less                      Print less-verbose packet information\n"
+         "  -Z|--normal                    Print standard packet information\n"
+         "  -q|--less                      Print less-verbose packet information\n"
 	     "  -X|--hex                       Print packet data in hex format\n"
 	     "  -l|--ascii                     Print human-readable packet data\n"
 	     "  -U|--update                    Update GeoIP databases\n"
@@ -1143,15 +1146,17 @@ static void __noreturn help(void)
 	     "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
-	     "  netsniff-ng --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
-	     "  netsniff-ng --in wlan0 --rfraw --out dump.pcap --silent --bind-cpu 0\n"
-	     "  netsniff-ng --in dump.pcap --mmap --out eth0 -k1000 --silent --bind-cpu 0\n"
-	     "  netsniff-ng --in dump.pcap --out dump.cfg --silent --bind-cpu 0\n"
-	     "  netsniff-ng --in eth0 --out eth1 --silent --bind-cpu 0 -J --type host\n"
-	     "  netsniff-ng --in eth1 --out /opt/probe/ -s -m --interval 100MiB -b 0\n"
-	     "  netsniff-ng --in vlan0 --out dump.pcap -c -u `id -u bob` -g `id -g bob`\n"
-	     "  netsniff-ng --in any --filter http.bpf --jumbo-support --ascii -V\n\n"
-	     "Note:\n"
+         "  dnstop-ng --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
+         "  dnstop-ng --in wlan0 --rfraw --out dump.pcap --silent --bind-cpu 0\n"
+         "  dnstop-ng --in dump.pcap --mmap --out eth0 -k1000 --silent --bind-cpu 0\n"
+         "  dnstop-ng --in dump.pcap --out dump.cfg --silent --bind-cpu 0\n"
+         "  dnstop-ng --in eth0 --out eth1 --silent --bind-cpu 0 -J --type host\n"
+         "  dnstop-ng --in eth1 --out /opt/probe/ -s -m --interval 100MiB -b 0\n"
+         "  dnstop-ng --in vlan0 --out dump.pcap -c -u `id -u bob` -g `id -g bob`\n"
+         "  dnstop-ng --in any --filter http.bpf --jumbo-support --ascii -V\n\n"
+         "Filter Note:\n"
+         "  The default filter if unspecified is 'udp port 53'\n"
+         "Note:\n"
 	     "  For introducing bit errors, delays with random variation and more\n"
 	     "  while replaying pcaps, make use of tc(8) with its disciplines (e.g. netem).\n");
 	puts(copyright);
@@ -1160,7 +1165,7 @@ static void __noreturn help(void)
 
 static void __noreturn version(void)
 {
-	printf("netsniff-ng %s, Git id: %s\n", VERSION_LONG, GITVERSION);
+    printf("dnstop-ng %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts("the packet sniffing beast\n"
 	     "http://www.netsniff-ng.org\n");
 	puts(copyright);
@@ -1286,8 +1291,11 @@ int main(int argc, char **argv)
 		case 's':
 			ctx.print_mode = PRINT_NONE;
 			break;
-		case 'q':
-			ctx.print_mode = PRINT_LESS;
+        case 'q':
+            ctx.print_mode = PRINT_LESS;
+            break;
+        case 'Z':
+            ctx.print_mode = PRINT_NORM;
 			break;
 		case 'X':
 			ctx.print_mode =
@@ -1388,6 +1396,10 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+
+    if (!ctx.filter) {
+        ctx.filter = "udp port 53";
+    }
 
 	if (!ctx.filter && optind != argc) {
 		int ret;
