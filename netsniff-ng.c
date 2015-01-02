@@ -47,8 +47,6 @@
 #include "dissector.h"
 #include "xmalloc.h"
 
-#include "dnsctxt.h"
-
 enum dump_mode {
 	DUMP_INTERVAL_TIME,
 	DUMP_INTERVAL_SIZE,
@@ -61,8 +59,7 @@ struct ctx {
 	size_t reserve_size;
 	bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose;
 	enum pcap_ops_groups pcap; enum dump_mode dump_mode;
-    uid_t uid; gid_t gid; uint32_t link_type, magic;
-    struct dnsctxt dns_ctxt;
+	uid_t uid; gid_t gid; uint32_t link_type, magic;
 };
 
 static volatile sig_atomic_t sigint = 0;
@@ -294,7 +291,7 @@ static void pcap_to_xmit(struct ctx *ctx)
 				       ctx->link_type, hdr, ctx->print_mode);
 
 			dissector_entry_point(out, hdr->tp_h.tp_snaplen,
-                          ctx->link_type, ctx->print_mode, &ctx->dns_ctxt);
+                          ctx->link_type, ctx->print_mode, NULL);
 
 			kernel_may_pull_from_tx(&hdr->tp_h);
 
@@ -442,7 +439,7 @@ static void receive_to_xmit(struct ctx *ctx)
 				       ctx->link_type, hdr_in, ctx->print_mode);
 
 			dissector_entry_point(in, hdr_in->tp_h.tp_snaplen,
-                          ctx->link_type, ctx->print_mode, &ctx->dns_ctxt);
+                          ctx->link_type, ctx->print_mode, NULL);
 
 			if (frame_count_max != 0) {
 				if (frame_count >= frame_count_max) {
@@ -613,7 +610,7 @@ static void read_pcap(struct ctx *ctx)
 			       ctx->print_mode);
 
 		dissector_entry_point(out, fm.tp_h.tp_snaplen,
-                      ctx->link_type, ctx->print_mode, &ctx->dns_ctxt);
+                      ctx->link_type, ctx->print_mode, NULL);
 
 		if (ctx->device_out)
 			translate_pcap_to_txf(fdo, out, fm.tp_h.tp_snaplen);
@@ -859,7 +856,7 @@ static void walk_t3_block(struct block_desc *pbd, struct ctx *ctx,
 				 hdr, ctx->print_mode, true);
 
 		dissector_entry_point(packet, hdr->tp_snaplen, ctx->link_type,
-                      ctx->print_mode, &ctx->dns_ctxt);
+                      ctx->print_mode, NULL);
 next:
                 hdr = (void *) ((uint8_t *) hdr + hdr->tp_next_offset);
 		sll = (void *) ((uint8_t *) hdr + TPACKET_ALIGN(sizeof(*hdr)));
@@ -1034,13 +1031,7 @@ next:
 		sock_rx_net_stats(sock, frame_count);
 
 		printf("\r%12lu  sec, %lu usec in total\n",
-               diff.tv_sec, diff.tv_usec);
-
-        printf("dns queries: %ld, replies: %ld, malformed: %ld\n",
-               ctx->dns_ctxt.query_count,
-               ctx->dns_ctxt.reply_count,
-               ctx->dns_ctxt.malformed_count);
-
+		       diff.tv_sec, diff.tv_usec);
 	} else {
 		printf("\n\n");
 		fflush(stdout);
@@ -1084,10 +1075,7 @@ static void init_ctx(struct ctx *ctx)
 
 	ctx->promiscuous = true;
 	ctx->randomize = false;
-    ctx->hwtimestamp = true;
-
-    dnsctxt_init(&ctx->dns_ctxt);
-
+	ctx->hwtimestamp = true;
 }
 
 static void destroy_ctx(struct ctx *ctx)
@@ -1096,9 +1084,7 @@ static void destroy_ctx(struct ctx *ctx)
 	free(ctx->device_out);
 	free(ctx->device_trans);
 
-    free(ctx->prefix);
-
-    dnsctxt_free(&ctx->dns_ctxt);
+	free(ctx->prefix);
 }
 
 static void __noreturn help(void)
@@ -1172,9 +1158,9 @@ int main(int argc, char **argv)
 	int c, i, j, cpu_tmp, opt_index, ops_touched = 0, vals[4] = {0};
 	bool prio_high = false, setsockmem = true;
 	void (*main_loop)(struct ctx *ctx) = NULL;
-    struct ctx ctx;
+	struct ctx ctx;
 
-    init_ctx(&ctx);
+	init_ctx(&ctx);
 	srand(time(NULL));
 
 	while ((c = getopt_long(argc, argv, short_options, long_options,
@@ -1471,6 +1457,6 @@ int main(int argc, char **argv)
 	device_restore_irq_affinity_list();
 	tprintf_cleanup();
 
-    destroy_ctx(&ctx);
+	destroy_ctx(&ctx);
 	return 0;
 }
