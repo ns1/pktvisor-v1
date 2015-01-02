@@ -51,16 +51,13 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     size_t   len = pkt_len(pkt);
     uint8_t *ptr = pkt_pull(pkt, len);
 
-    /*
-    char src_ip[INET_ADDRSTRLEN];
-    char dst_ip[INET_ADDRSTRLEN];
-    uint16_t src_port, dest_port;
-    */
-
     ldns_pkt *dns_pkt = NULL;
     ldns_status status;
 
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
+
+    if (!len)
+        return;
 
     dns_ctxt->seen++;
 
@@ -68,20 +65,16 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         dns_ctxt->incoming++;
     }
 
-    if (!len)
-        return;
+    // table counters
 
-    /*
-    inet_ntop(AF_INET, pkt->src_addr, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, pkt->dest_addr, dst_ip, sizeof(dst_ip));
-    src_port = ntohs(*pkt->udp_src_port);
-    dest_port = ntohs(*pkt->udp_dest_port);
-    */
+    // source by ip
+    dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
 
     if (pkt->pkttype != PACKET_HOST) {
         // outgoing: we don't do a full DNS wire decode, just
         // look for DNS status code
         // XXX
+        return;
     }
 
     status = ldns_wire2pkt(&dns_pkt, ptr, len);

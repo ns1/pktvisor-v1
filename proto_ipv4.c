@@ -180,6 +180,8 @@ static void ipv4_less(struct pkt_buff *pkt, void *ctxt)
 
 	inet_ntop(AF_INET, &ip->h_saddr, src_ip, sizeof(src_ip));
 	inet_ntop(AF_INET, &ip->h_daddr, dst_ip, sizeof(dst_ip));
+    pkt->src_addr = &ip->h_saddr;
+    pkt->dest_addr = &ip->h_daddr;
 
 	tprintf(" %s/%s Len %u", src_ip, dst_ip,
 		ntohs(ip->h_tot_len));
@@ -197,15 +199,13 @@ static void ipv4_less(struct pkt_buff *pkt, void *ctxt)
 
 static void ipv4_visit(struct pkt_buff *pkt, void *ctxt)
 {
-    char src_ip[INET_ADDRSTRLEN];
-    char dst_ip[INET_ADDRSTRLEN];
     struct ipv4hdr *ip = (struct ipv4hdr *) pkt_pull(pkt, sizeof(*ip));
 
     if (!ip)
         return;
 
-    inet_ntop(AF_INET, &ip->h_saddr, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, &ip->h_daddr, dst_ip, sizeof(dst_ip));
+    pkt->src_addr = &ip->h_saddr;
+    pkt->dest_addr = &ip->h_daddr;
 
     /* cut off IP options and everything that is not part of IPv4 payload */
     pkt_pull(pkt, max_t(uint8_t, ip->h_ihl, sizeof(*ip) / sizeof(uint32_t))

@@ -12,7 +12,8 @@
 #define MAX_DNAME_LEN 253
 
 // max LRU table size
-#define MAX_LRU_SIZE 500
+// XXX need to make this per table
+#define MAX_LRU_SIZE 10000
 
 // accumulator hash table keyed by ip address (in int form)
 // or other 32 bit key
@@ -48,7 +49,9 @@ struct dnsctxt {
 
 void dnsctxt_init(struct dnsctxt *ctxt);
 void dnsctxt_free(struct dnsctxt *ctxt);
-void dnsctxt_count_ip(struct int32_entry *table, uint32_t key);
-void dnsctxt_count_name(struct str_entry *table, char *name);
+void dnsctxt_table_summary(struct dnsctxt *ctxt);
+
+void dnsctxt_count_ip(struct int32_entry **table, uint32_t key);
+void dnsctxt_count_name(struct str_entry **table, char *name);
 
 #endif /* DNSCTXT_H */

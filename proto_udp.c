@@ -71,6 +71,9 @@ static void udp_less(struct pkt_buff *pkt, void *ctxt)
     if (udp == NULL)
         return;
 
+    pkt->udp_src_port = &udp->source;
+    pkt->udp_dest_port = &udp->dest;
+
     src = ntohs(udp->source);
     dest = ntohs(udp->dest);
 
@@ -90,17 +93,12 @@ static void udp_less(struct pkt_buff *pkt, void *ctxt)
 static void udp_visit(struct pkt_buff *pkt, void *ctxt)
 {
 	struct udphdr *udp = (struct udphdr *) pkt_pull(pkt, sizeof(*udp));
-	uint16_t src, dest;
-	char *src_name, *dest_name;
 
 	if (udp == NULL)
 		return;
 
-	src = ntohs(udp->source);
-	dest = ntohs(udp->dest);
-
-	src_name = lookup_port_udp(src);
-    dest_name = lookup_port_udp(dest);
+    pkt->udp_src_port = &udp->source;
+    pkt->udp_dest_port = &udp->dest;
 
     // XXX this key is hard coded in proto_dns.c. currently this will ALWAYS
     // process UDP traffic as DNS, so it assumes an appropriate bpf filter

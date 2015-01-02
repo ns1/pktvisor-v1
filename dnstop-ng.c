@@ -535,6 +535,9 @@ static void dns_summary(struct ctx *ctx)
     printf("\r%12lu  DNS Query\n", ctx->dns_ctxt.query_count);
     printf("\r%12lu  DNS Reply\n", ctx->dns_ctxt.reply_count);
     printf("\r%12lu  DNS Malformed\n", ctx->dns_ctxt.malformed_count);
+
+    dnsctxt_table_summary(&ctx->dns_ctxt);
+
 }
 
 static void read_pcap(struct ctx *ctx)
