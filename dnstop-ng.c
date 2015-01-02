@@ -526,6 +526,17 @@ static void translate_pcap_to_txf(int fdo, uint8_t *out, size_t len)
 	write_or_die(fdo, bout, strlen(bout));
 }
 
+static void dns_summary(struct ctx *ctx)
+{
+    printf("\nDNS Results:\n");
+    printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
+    printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
+    printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+    printf("\r%12lu  DNS Query\n", ctx->dns_ctxt.query_count);
+    printf("\r%12lu  DNS Reply\n", ctx->dns_ctxt.reply_count);
+    printf("\r%12lu  DNS Malformed\n", ctx->dns_ctxt.malformed_count);
+}
+
 static void read_pcap(struct ctx *ctx)
 {
 	uint8_t *out;
@@ -651,6 +662,8 @@ out:
 	printf("\r%12lu packets truncated in file\n", trunced);
 	printf("\r%12lu bytes outgoing\n", ctx->tx_bytes);
 	printf("\r%12lu sec, %lu usec in total\n", diff.tv_sec, diff.tv_usec);
+
+    dns_summary(ctx);
 
 	if (!strncmp("-", ctx->device_in, strlen("-")))
 		dup2(fd, fileno(stdin));
@@ -1043,13 +1056,7 @@ next:
 		printf("\r%12lu  sec, %lu usec in total\n",
                diff.tv_sec, diff.tv_usec);
 
-        printf("\nDNS Results:\n");
-        printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
-        printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
-        printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
-        printf("\r%12lu  DNS Query\n", ctx->dns_ctxt.query_count);
-        printf("\r%12lu  DNS Reply\n", ctx->dns_ctxt.reply_count);
-        printf("\r%12lu  DNS Malformed\n", ctx->dns_ctxt.malformed_count);
+        dns_summary(ctx);
 
 	} else {
 		printf("\n\n");
