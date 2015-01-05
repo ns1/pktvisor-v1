@@ -10,20 +10,35 @@
 // uthash LRU: https://gist.github.com/jehiah/900846
 
 void dnsctxt_init(struct dnsctxt *ctxt) {
+
     ctxt->source_table = NULL;
     ctxt->dest_table = NULL;
     ctxt->malformed_table = NULL;
-    ctxt->query_name_table = NULL;
+    ctxt->query_name1_table = NULL;
+    ctxt->query_name2_table = NULL;
+    ctxt->query_name3_table = NULL;
 
-    ctxt->malformed_count = 0;
     ctxt->seen = 0;
     ctxt->incoming = 0;
+
+    ctxt->cnt_query = 0;
+    ctxt->cnt_reply = 0;
+
+    ctxt->cnt_status_noerror = 0;
+    ctxt->cnt_status_srvfail = 0;
+    ctxt->cnt_status_nxdomain = 0;
+    ctxt->cnt_status_refused = 0;
+
+    ctxt->cnt_malformed = 0;
+    ctxt->cnt_edns = 0;
+
 }
 
 void dnsctxt_free(struct dnsctxt *ctxt) {
     struct int32_entry *entry, *tmp_entry;
     struct str_entry *sentry, *tmp_sentry;
 
+    // XXX make this a macro
     HASH_ITER(hh, ctxt->source_table, entry, tmp_entry) {
         HASH_DELETE(hh, ctxt->source_table, entry);
         free(entry);
@@ -36,8 +51,16 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
         HASH_DELETE(hh, ctxt->malformed_table, entry);
         free(entry);
     }
-    HASH_ITER(hh, ctxt->query_name_table, sentry, tmp_sentry) {
-        HASH_DELETE(hh, ctxt->query_name_table, sentry);
+    HASH_ITER(hh, ctxt->query_name1_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->query_name1_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->query_name2_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->query_name2_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->query_name3_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->query_name3_table, sentry);
         free(sentry);
     }
 }
@@ -100,7 +123,9 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
     printf("\nMalformed Query Source IPs\n");
     _print_table_ip(ctxt->malformed_table);
     printf("\nQueried Names\n");
-    _print_table_str(ctxt->query_name_table);
+    _print_table_str(ctxt->query_name1_table);
+    _print_table_str(ctxt->query_name2_table);
+    _print_table_str(ctxt->query_name3_table);
 
 }
 

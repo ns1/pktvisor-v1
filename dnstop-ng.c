@@ -531,8 +531,18 @@ static void dns_summary(struct ctx *ctx)
     printf("\nDNS Results:\n");
     printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
     printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
-    printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
-    printf("\r%12lu  malformed\n", ctx->dns_ctxt.malformed_count);
+    printf("\r%12lu  outgoing\n\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+
+    printf("\r%12lu  Query flag\n", ctx->dns_ctxt.cnt_query);
+    printf("\r%12lu  Reply flag\n\n", ctx->dns_ctxt.cnt_reply);
+
+    printf("\r%12lu  NOERROR\n", ctx->dns_ctxt.cnt_status_noerror);
+    printf("\r%12lu  SRVFAIL\n", ctx->dns_ctxt.cnt_status_srvfail);
+    printf("\r%12lu  NXDOMAIN\n", ctx->dns_ctxt.cnt_status_nxdomain);
+    printf("\r%12lu  REFUSED\n", ctx->dns_ctxt.cnt_status_refused);
+
+    printf("\r%12lu  malformed\n", ctx->dns_ctxt.cnt_malformed);
+    printf("\r%12lu  EDNS\n", ctx->dns_ctxt.cnt_edns);
 
     dnsctxt_table_summary(&ctx->dns_ctxt);
 

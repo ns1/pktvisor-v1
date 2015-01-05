@@ -18,25 +18,72 @@
 #include "pkt_buff.h"
 #include "dnsctxt.h"
 
+// dnstop
+struct _rfc1035_header {
+    unsigned short id;
+    unsigned int qr:1;
+    unsigned int opcode:4;
+    unsigned int aa:1;
+    unsigned int tc:1;
+    unsigned int rd:1;
+    unsigned int ra:1;
+    unsigned int rcode:4;
+    unsigned short qdcount;
+    unsigned short ancount;
+    unsigned short nscount;
+    unsigned short arcount;
+};
+
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
-    uint8_t *ptr = pkt_pull(pkt, len);
+    uint8_t *ptr = NULL;
 
+    // for simple DNS header decode
+    unsigned short us;
+    struct _rfc1035_header qh;
+
+    // for full DNS wire decode by ldns
     ldns_pkt *dns_pkt = NULL;
     char *q_name = NULL;
     ldns_status status;
 
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
 
-    if (!len)
-        return;
-
+    // basic counts
     dns_ctxt->seen++;
 
     if (pkt->pkttype == PACKET_HOST) {
+        // incoming packet
         dns_ctxt->incoming++;
     }
+
+    // sanity check total len
+    if (!len || len < sizeof(qh)) {
+        dns_ctxt->cnt_malformed++;
+        return;
+    }
+
+    // do a simple header decode first
+    memcpy(&us, pkt->data + 0, 2);
+    qh.id = ntohs(us);
+    memcpy(&us, pkt->data + 2, 2);
+    us = ntohs(us);
+    qh.qr = (us >> 15) & 0x01;
+    qh.opcode = (us >> 11) & 0x0F;
+    qh.aa = (us >> 10) & 0x01;
+    qh.tc = (us >> 9) & 0x01;
+    qh.rd = (us >> 8) & 0x01;
+    qh.ra = (us >> 7) & 0x01;
+    qh.rcode = us & 0x0F;
+    memcpy(&us, pkt->data + 4, 2);
+    qh.qdcount = ntohs(us);
+    memcpy(&us, pkt->data + 6, 2);
+    qh.ancount = ntohs(us);
+    memcpy(&us, pkt->data + 8, 2);
+    qh.nscount = ntohs(us);
+    memcpy(&us, pkt->data + 10, 2);
+    qh.arcount = ntohs(us);
 
     // table counters
 
@@ -44,17 +91,43 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
     // dest by ip
     dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
+    // Query/Reply flags
+    if (qh.qr == 1) {
+        dns_ctxt->cnt_reply++;
+    }
+    else {
+        dns_ctxt->cnt_query++;
+    }
+    // result code
+    switch (qh.rcode) {
+    case LDNS_RCODE_NOERROR:
+        dns_ctxt->cnt_status_noerror++;
+        break;
+    case LDNS_RCODE_NXDOMAIN:
+        dns_ctxt->cnt_status_nxdomain++;
+        break;
+    case LDNS_RCODE_REFUSED:
+        dns_ctxt->cnt_status_refused++;
+        break;
+    case LDNS_RCODE_SERVFAIL:
+        dns_ctxt->cnt_status_srvfail++;
+        break;
+    }
+
+    // XXX if not NOERROR, add to LRU
 
     if (pkt->pkttype != PACKET_HOST) {
-        // outgoing: we don't do a full DNS wire decode, just
-        // look for DNS status code
-        // XXX
+        // outgoing: since we assume we're an authoritative server,
+        // we don't do a full DNS wire decode, we're really only interested
+        // in the result code, which we logged above
         return;
     }
 
+    // incoming query: ldns will decode the full udp packet buffer
+    ptr = pkt_pull(pkt, len);
     status = ldns_wire2pkt(&dns_pkt, ptr, len);
     if (status != LDNS_STATUS_OK) {
-        dns_ctxt->malformed_count++;
+        dns_ctxt->cnt_malformed++;
         dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         return;
     }
@@ -62,7 +135,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     q_name = ldns_rdf2str(ldns_rr_owner(ldns_rr_list_rr(
                                             ldns_pkt_question(dns_pkt), 0)));
     if (q_name) {
-        dnsctxt_count_name(&dns_ctxt->query_name_table, q_name);
+        dnsctxt_count_name(&dns_ctxt->query_name1_table, q_name);
         free(q_name);
     }
 

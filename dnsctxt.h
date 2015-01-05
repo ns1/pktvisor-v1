@@ -35,17 +35,36 @@ struct str_entry {
 
 // context structure that gets passed to dns processing function
 struct dnsctxt {
-    struct int32_entry *source_table;
-    struct int32_entry *dest_table;
-    struct int32_entry *malformed_table;
-    struct str_entry *query_name_table;
 
-    // general packet counters proto_dns handles
+    // LRU hash tables
+
+    // source ips
+    struct int32_entry *source_table;
+    // dest ips
+    struct int32_entry *dest_table;
+    // malformed (unparsable) query source ips
+    struct int32_entry *malformed_table;
+
+    // queried name tables, for 1,2,3 label lengths
+    struct str_entry *query_name1_table;
+    struct str_entry *query_name2_table;
+    struct str_entry *query_name3_table;
+
+    // general packet counters
     uint64_t seen;
     uint64_t incoming;
 
+    // dns header counters
+    uint64_t cnt_query;
+    uint64_t cnt_reply;
+    uint64_t cnt_status_noerror;
+    uint64_t cnt_status_srvfail;
+    uint64_t cnt_status_nxdomain;
+    uint64_t cnt_status_refused;
+
     // parsed DNS counters
-    uint64_t malformed_count;
+    uint64_t cnt_malformed;
+    uint64_t cnt_edns;
 
 };
 
