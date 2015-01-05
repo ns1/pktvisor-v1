@@ -122,7 +122,11 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     status = ldns_wire2pkt(&dns_pkt, ptr, len);
     if (status != LDNS_STATUS_OK) {
         dns_ctxt->cnt_malformed++;
-        dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
+        // only add to malformed table if this is an incoming query,
+        // because the authoritative server may echo back an invalid
+        // query part with REFUSED
+        if (pkt->pkttype == PACKET_HOST)
+            dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         return;
     }
 

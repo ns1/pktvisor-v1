@@ -531,18 +531,29 @@ static void dns_summary(struct ctx *ctx)
     printf("\nDNS Results:\n");
     printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
     printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
-    printf("\r%12lu  outgoing\n\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+    printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+    printf("\r%12lu  malformed (%f%%)\n",
+           ctx->dns_ctxt.cnt_malformed,
+           ((double)ctx->dns_ctxt.cnt_malformed / (double)ctx->dns_ctxt.seen)*100);
+    printf("\r%12lu  EDNS (%f%%)\n\n",
+           ctx->dns_ctxt.cnt_edns,
+           ((double)ctx->dns_ctxt.cnt_edns / (double)ctx->dns_ctxt.seen)*100);
 
     printf("\r%12lu  Query flag\n", ctx->dns_ctxt.cnt_query);
     printf("\r%12lu  Reply flag\n\n", ctx->dns_ctxt.cnt_reply);
 
-    printf("\r%12lu  NOERROR\n", ctx->dns_ctxt.cnt_status_noerror);
-    printf("\r%12lu  SRVFAIL\n", ctx->dns_ctxt.cnt_status_srvfail);
-    printf("\r%12lu  NXDOMAIN\n", ctx->dns_ctxt.cnt_status_nxdomain);
-    printf("\r%12lu  REFUSED\n", ctx->dns_ctxt.cnt_status_refused);
-
-    printf("\r%12lu  malformed\n", ctx->dns_ctxt.cnt_malformed);
-    printf("\r%12lu  EDNS\n", ctx->dns_ctxt.cnt_edns);
+    printf("\r%12lu  NOERROR (%f%%)\n",
+           ctx->dns_ctxt.cnt_status_noerror,
+           ((double)ctx->dns_ctxt.cnt_status_noerror / (double)ctx->dns_ctxt.seen)*100);
+    printf("\r%12lu  SRVFAIL (%f%%)\n",
+           ctx->dns_ctxt.cnt_status_srvfail,
+           ((double)ctx->dns_ctxt.cnt_status_srvfail / (double)ctx->dns_ctxt.seen)*100);
+    printf("\r%12lu  NXDOMAIN (%f%%)\n",
+           ctx->dns_ctxt.cnt_status_nxdomain,
+           ((double)ctx->dns_ctxt.cnt_status_nxdomain / (double)ctx->dns_ctxt.seen)*100);
+    printf("\r%12lu  REFUSED (%f%%)\n",
+           ctx->dns_ctxt.cnt_status_refused,
+           ((double)ctx->dns_ctxt.cnt_status_refused / (double)ctx->dns_ctxt.seen)*100);
 
     dnsctxt_table_summary(&ctx->dns_ctxt);
 
@@ -669,9 +680,9 @@ out:
 
 	fflush(stdout);
 	printf("\n");
-	printf("\r%12lu packets outgoing\n", ctx->tx_packets);
+    printf("\r%12lu packets seen\n", ctx->tx_packets);
 	printf("\r%12lu packets truncated in file\n", trunced);
-	printf("\r%12lu bytes outgoing\n", ctx->tx_bytes);
+    printf("\r%12lu bytes seen\n", ctx->tx_bytes);
 	printf("\r%12lu sec, %lu usec in total\n", diff.tv_sec, diff.tv_usec);
 
     dns_summary(ctx);
