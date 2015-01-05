@@ -16,7 +16,7 @@
 #define MAX_LRU_SIZE 10000
 
 // max summary table size
-#define MAX_SUMMARY_SIZE 20
+#define MAX_SUMMARY_SIZE 10
 
 // accumulator hash table keyed by ip address (in int form)
 // or other 32 bit key
@@ -37,6 +37,7 @@ struct str_entry {
 struct dnsctxt {
     struct int32_entry *source_table;
     struct int32_entry *dest_table;
+    struct int32_entry *malformed_table;
     struct str_entry *query_name_table;
 
     // general packet counters proto_dns handles
@@ -45,8 +46,6 @@ struct dnsctxt {
 
     // parsed DNS counters
     uint64_t malformed_count;
-    uint64_t query_count;
-    uint64_t reply_count;
 
 };
 

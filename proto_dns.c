@@ -18,40 +18,13 @@
 #include "pkt_buff.h"
 #include "dnsctxt.h"
 
-
-void print_dns(struct pkt_buff *pkt, void *ctxt)
-{
-    size_t   len = pkt_len(pkt);
-    uint8_t *ptr = pkt_pull(pkt, len);
-
-    ldns_pkt *dns_pkt = NULL;
-    ldns_status status;
-
-    if (!len)
-        return;
-
-    status = ldns_wire2pkt(&dns_pkt, ptr, len);
-    if (status != LDNS_STATUS_OK) {
-        tprintf(" [ DNS: MALFORMED DNS PACKET ]\n");
-        return;
-    }
-
-    // XXX this is very verbose, make something more useful
-    char *pkt_str = ldns_pkt2str(dns_pkt);
-
-    tprintf(" [ DNS %s ]\n", pkt_str);
-
-    free(pkt_str);
-    ldns_pkt_free(dns_pkt);
-
-}
-
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
     uint8_t *ptr = pkt_pull(pkt, len);
 
     ldns_pkt *dns_pkt = NULL;
+    char *q_name = NULL;
     ldns_status status;
 
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
@@ -69,6 +42,8 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
 
     // source by ip
     dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
+    // dest by ip
+    dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
 
     if (pkt->pkttype != PACKET_HOST) {
         // outgoing: we don't do a full DNS wire decode, just
@@ -80,18 +55,50 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     status = ldns_wire2pkt(&dns_pkt, ptr, len);
     if (status != LDNS_STATUS_OK) {
         dns_ctxt->malformed_count++;
+        dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         return;
     }
 
-    // XXX check query/reply flag, do appropriate counter
-    dns_ctxt->query_count++;
+    q_name = ldns_rdf2str(ldns_rr_owner(ldns_rr_list_rr(
+                                            ldns_pkt_question(dns_pkt), 0)));
+    if (q_name) {
+        dnsctxt_count_name(&dns_ctxt->query_name_table, q_name);
+        free(q_name);
+    }
 
+    ldns_pkt_free(dns_pkt);
+
+}
+
+void print_dns(struct pkt_buff *pkt, void *ctxt)
+{
+    size_t   len = pkt_len(pkt);
+    uint8_t *ptr = pkt_pull(pkt, len);
+
+    ldns_pkt *dns_pkt = NULL;
+    ldns_status status;
+
+    if (!len)
+        return;
+
+    status = ldns_wire2pkt(&dns_pkt, ptr, len);
+    if (status != LDNS_STATUS_OK) {
+        tprintf(" [ DNS: MALFORMED DNS PACKET ]\n");
+        // backout the data so it dumps as hex
+        pkt->data -= len;
+        return;
+    }
+
+    // XXX this is very verbose, make something more useful
     char *pkt_str = ldns_pkt2str(dns_pkt);
+
+    tprintf(" [ DNS %s ]\n", pkt_str);
 
     free(pkt_str);
     ldns_pkt_free(dns_pkt);
 
 }
+
 
 static void print_dns_less(struct pkt_buff *pkt, void *ctxt)
 {
