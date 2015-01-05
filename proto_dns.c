@@ -129,7 +129,39 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     q_name = ldns_rdf2str(ldns_rr_owner(ldns_rr_list_rr(
                                             ldns_pkt_question(dns_pkt), 0)));
     if (q_name) {
-        dnsctxt_count_name(&dns_ctxt->query_name2_table, q_name);
+
+        // lowercase
+        char *p = q_name;
+        for ( ; *p; ++p) *p = tolower(*p);
+        // chop terminating .
+        q_name[strlen(q_name)-1] = 0;
+
+        // break this out to labels of len 2 and 3
+        // assumes terminating ".", which ldns always gives us in q_name
+        char *part = q_name + strlen(q_name) - 1;
+        // zip to TLD .
+        while (part > q_name && *part != '.')
+            part--;
+        part--;
+        // zip to zone, or q_name begin
+        while (part > q_name && *part != '.')
+            part--;
+        // if not q_name begin, start after .
+        if (part == q_name) {
+            dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
+        }
+        else {
+            dnsctxt_count_name(&dns_ctxt->query_name2_table, part+1);
+            // may be go one more label length
+            part--;
+            while (part > q_name && *part != '.')
+                part--;
+            if (part == q_name)
+                dnsctxt_count_name(&dns_ctxt->query_name3_table, part);
+            else
+                // anything longer gets squished into this domain
+                dnsctxt_count_name(&dns_ctxt->query_name3_table, part+1);
+        }
 
         // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
         // and REFUSED counts

@@ -127,8 +127,9 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
     _print_table_ip(ctxt->dest_table);
     printf("\nMalformed Query Source IPs\n");
     _print_table_ip(ctxt->malformed_table);
-    printf("\nQueried Names\n");
+    printf("\nQueried Names (2)\n");
     _print_table_str(ctxt->query_name2_table);
+    printf("\nQueried Names (3)\n");
     _print_table_str(ctxt->query_name3_table);
     printf("\nNXDOMAIN Names\n");
     _print_table_str(ctxt->nxdomain_table);
