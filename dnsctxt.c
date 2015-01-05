@@ -14,9 +14,10 @@ void dnsctxt_init(struct dnsctxt *ctxt) {
     ctxt->source_table = NULL;
     ctxt->dest_table = NULL;
     ctxt->malformed_table = NULL;
-    ctxt->query_name1_table = NULL;
     ctxt->query_name2_table = NULL;
     ctxt->query_name3_table = NULL;
+    ctxt->nxdomain_table = NULL;
+    ctxt->refused_table = NULL;
 
     ctxt->seen = 0;
     ctxt->incoming = 0;
@@ -51,16 +52,20 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
         HASH_DELETE(hh, ctxt->malformed_table, entry);
         free(entry);
     }
-    HASH_ITER(hh, ctxt->query_name1_table, sentry, tmp_sentry) {
-        HASH_DELETE(hh, ctxt->query_name1_table, sentry);
-        free(sentry);
-    }
     HASH_ITER(hh, ctxt->query_name2_table, sentry, tmp_sentry) {
         HASH_DELETE(hh, ctxt->query_name2_table, sentry);
         free(sentry);
     }
     HASH_ITER(hh, ctxt->query_name3_table, sentry, tmp_sentry) {
         HASH_DELETE(hh, ctxt->query_name3_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->nxdomain_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->nxdomain_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->refused_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->refused_table, sentry);
         free(sentry);
     }
 }
@@ -123,9 +128,12 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
     printf("\nMalformed Query Source IPs\n");
     _print_table_ip(ctxt->malformed_table);
     printf("\nQueried Names\n");
-    _print_table_str(ctxt->query_name1_table);
     _print_table_str(ctxt->query_name2_table);
     _print_table_str(ctxt->query_name3_table);
+    printf("\nNXDOMAIN Names\n");
+    _print_table_str(ctxt->nxdomain_table);
+    printf("\nREFUSED Names\n");
+    _print_table_str(ctxt->refused_table);
 
 }
 

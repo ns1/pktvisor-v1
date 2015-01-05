@@ -46,9 +46,14 @@ struct dnsctxt {
     struct int32_entry *malformed_table;
 
     // queried name tables, for 1,2,3 label lengths
-    struct str_entry *query_name1_table;
     struct str_entry *query_name2_table;
     struct str_entry *query_name3_table;
+
+    // NXDOMAIN names
+    struct str_entry *nxdomain_table;
+
+    // REFUSED names
+    struct str_entry *refused_table;
 
     // general packet counters
     uint64_t seen;

@@ -114,14 +114,8 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         break;
     }
 
-    // XXX if not NOERROR, add to LRU
-
-    if (pkt->pkttype != PACKET_HOST) {
-        // outgoing: since we assume we're an authoritative server,
-        // we don't do a full DNS wire decode, we're really only interested
-        // in the result code, which we logged above
-        return;
-    }
+    // XXX if we want to, we can branch here on incoming vs. outgong
+    // packets to not have to fully decode outgoing
 
     // incoming query: ldns will decode the full udp packet buffer
     ptr = pkt_pull(pkt, len);
@@ -135,8 +129,26 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     q_name = ldns_rdf2str(ldns_rr_owner(ldns_rr_list_rr(
                                             ldns_pkt_question(dns_pkt), 0)));
     if (q_name) {
-        dnsctxt_count_name(&dns_ctxt->query_name1_table, q_name);
+        dnsctxt_count_name(&dns_ctxt->query_name2_table, q_name);
+
+        // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
+        // and REFUSED counts
+        if (qh.qr && qh.rcode != LDNS_RCODE_NOERROR) {
+            switch (qh.rcode) {
+            case LDNS_RCODE_NXDOMAIN:
+                dnsctxt_count_name(&dns_ctxt->nxdomain_table, q_name);
+                break;
+            case LDNS_RCODE_REFUSED:
+                dnsctxt_count_name(&dns_ctxt->refused_table, q_name);
+                break;
+            }
+        }
+
         free(q_name);
+    }
+
+    if (ldns_pkt_edns(dns_pkt)) {
+        dns_ctxt->cnt_edns++;
     }
 
     ldns_pkt_free(dns_pkt);
