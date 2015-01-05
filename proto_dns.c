@@ -87,10 +87,17 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
 
     // table counters
 
+    // XXX if we can, limit source and udp src only to incoming (PACKET_HOST)
+    // and dest only to outgoing. problem is, this doesn't seem to be working
+    // for pcap dumps -- they all show up as PACKET_HOST
+
     // source by ip
     dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
-    // dest by ip
+    // incoming: store source udp port
+    dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
+    // store dest by ip
     dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
+
     // Query/Reply flags
     if (qh.qr == 1) {
         dns_ctxt->cnt_reply++;

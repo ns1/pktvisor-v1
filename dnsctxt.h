@@ -44,6 +44,8 @@ struct dnsctxt {
     struct int32_entry *dest_table;
     // malformed (unparsable) query source ips
     struct int32_entry *malformed_table;
+    // src ports
+    struct int32_entry *src_port_table;
 
     // queried name tables, for 1,2,3 label lengths
     struct str_entry *query_name2_table;
@@ -79,5 +81,6 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt);
 
 void dnsctxt_count_ip(struct int32_entry **table, uint32_t key);
 void dnsctxt_count_name(struct str_entry **table, char *name);
+#define dnsctxt_count_int dnsctxt_count_ip
 
 #endif /* DNSCTXT_H */

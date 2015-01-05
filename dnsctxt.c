@@ -14,6 +14,7 @@ void dnsctxt_init(struct dnsctxt *ctxt) {
     ctxt->source_table = NULL;
     ctxt->dest_table = NULL;
     ctxt->malformed_table = NULL;
+    ctxt->src_port_table = NULL;
     ctxt->query_name2_table = NULL;
     ctxt->query_name3_table = NULL;
     ctxt->nxdomain_table = NULL;
@@ -52,6 +53,10 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
         HASH_DELETE(hh, ctxt->malformed_table, entry);
         free(entry);
     }
+    HASH_ITER(hh, ctxt->src_port_table, entry, tmp_entry) {
+        HASH_DELETE(hh, ctxt->src_port_table, entry);
+        free(entry);
+    }
     HASH_ITER(hh, ctxt->query_name2_table, sentry, tmp_sentry) {
         HASH_DELETE(hh, ctxt->query_name2_table, sentry);
         free(sentry);
@@ -70,7 +75,7 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
     }
 }
 
-int _sort_ip_by_count(void *a, void *b) {
+int _sort_int_by_count(void *a, void *b) {
     struct int32_entry *left = (struct int32_entry *)a;
     struct int32_entry *right = (struct int32_entry *)b;
     if (left->count == right->count)
@@ -81,7 +86,7 @@ int _sort_ip_by_count(void *a, void *b) {
         return 1;
 }
 
-// XXX could be macro from ip version
+// XXX could be macro from int version
 int _sort_str_by_count(void *a, void *b) {
     struct str_entry *left = (struct str_entry *)a;
     struct str_entry *right = (struct str_entry *)b;
@@ -93,12 +98,30 @@ int _sort_str_by_count(void *a, void *b) {
         return 1;
 }
 
+void _print_table_int(struct int32_entry *table) {
+    struct int32_entry *entry, *tmp_entry;
+    unsigned int i = 0;
+
+    if (!table)
+        return;
+
+    HASH_SORT(table, _sort_int_by_count);
+    HASH_ITER(hh, table, entry, tmp_entry) {
+        printf("%u %lu\n", entry->key, entry->count);
+        if (++i > MAX_SUMMARY_SIZE)
+            break;
+    }
+}
+
 void _print_table_ip(struct int32_entry *table) {
     struct int32_entry *entry, *tmp_entry;
     char ip[INET_ADDRSTRLEN];
     unsigned int i = 0;
 
-    HASH_SORT(table, _sort_ip_by_count);
+    if (!table)
+        return;
+
+    HASH_SORT(table, _sort_int_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
         printf("%16s %lu\n", ip, entry->count);
@@ -110,6 +133,9 @@ void _print_table_ip(struct int32_entry *table) {
 void _print_table_str(struct str_entry *table) {
     struct str_entry *entry, *tmp_entry;
     unsigned int i = 0;
+
+    if (!table)
+        return;
 
     HASH_SORT(table, _sort_str_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
@@ -123,6 +149,8 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
 
     printf("\nSources IPs\n");
     _print_table_ip(ctxt->source_table);
+    printf("\nSource Ports\n");
+    _print_table_int(ctxt->src_port_table);
     printf("\nDestinations IPs\n");
     _print_table_ip(ctxt->dest_table);
     printf("\nMalformed Query Source IPs\n");

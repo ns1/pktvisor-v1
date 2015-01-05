@@ -230,7 +230,7 @@ void sock_rx_net_stats(int sock, unsigned long seen)
 
 	ret = get_rx_net_stats(sock, &packets, &drops, v3);
 	if (ret == 0) {
-		printf("\r%12"PRIu64"  packets incoming (%"PRIu64" unread on exit)\n",
+        printf("\r%12"PRIu64"  packets processed (%"PRIu64" unread on exit)\n",
 		       v3 ? (uint64_t)seen : packets, v3 ? packets - seen : 0);
 		printf("\r%12"PRIu64"  packets passed filter\n", packets - drops);
 		printf("\r%12"PRIu64"  packets failed filter (out of space)\n", drops);
