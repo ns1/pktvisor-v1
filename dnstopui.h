@@ -10,5 +10,6 @@
 void dnstop_ui_init(int interval);
 void dnstop_ui(struct dnsctxt *dns_ctxt);
 void dnstop_ui_shutdown();
+void dnstop_ui_waitforkey(struct dnsctxt *dns_ctxt);
 
 #endif

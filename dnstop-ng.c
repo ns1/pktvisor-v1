@@ -700,6 +700,9 @@ out:
 
         dns_summary(ctx);
     }
+    else {
+        dnstop_ui_waitforkey(&ctx->dns_ctxt);
+    }
 
 	if (!strncmp("-", ctx->device_in, strlen("-")))
 		dup2(fd, fileno(stdin));

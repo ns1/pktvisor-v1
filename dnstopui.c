@@ -20,6 +20,12 @@ void gotsignalrm(int sig) {
     signal(sig, gotsignalrm);
 }
 
+void dnstop_ui_waitforkey(struct dnsctxt *dns_ctxt) {
+    mvprintw(getmaxy(w)-5, 0, "<hit key to continue>");
+    redraw(dns_ctxt);
+    while (getch() == ERR);
+}
+
 void dnstop_ui_init(int interval) {
     w = initscr();
     cbreak();
