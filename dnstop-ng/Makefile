@@ -1,7 +1,8 @@
 dnstop-ng-libs =	$(shell pkg-config --libs libnl-3.0) \
 			$(shell pkg-config --libs libnl-genl-3.0) \
                         -lpthread \
-                        -lldns
+                        -lldns \
+                        -lncurses
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 dnstop-ng-libs +=	-lpcap
@@ -38,6 +39,7 @@ dnstop-ng-objs =	dissector.o \
 			proto_tcp.o \
             proto_udp.o \
             proto_dns.o \
+            dnstopui.o \
             dnsctxt.o \
 			proto_vlan.o \
 			proto_vlan_q_in_q.o \

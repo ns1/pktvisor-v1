@@ -49,6 +49,7 @@
 #include "xmalloc.h"
 
 #include "dnsctxt.h"
+#include "dnstopui.h"
 
 enum dump_mode {
 	DUMP_INTERVAL_TIME,
@@ -60,7 +61,8 @@ struct ctx {
 	int cpu, rfraw, dump, print_mode, dump_dir, packet_type;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
-	bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose;
+    bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
+         ui;
 	enum pcap_ops_groups pcap; enum dump_mode dump_mode;
     uid_t uid; gid_t gid; uint32_t link_type, magic;
     struct dnsctxt dns_ctxt;
@@ -69,7 +71,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZsqXlvhF:RGAP:Vu:g:T:DBU";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:RGAP:Vu:g:T:DBU";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
@@ -98,7 +100,6 @@ static const struct option long_options[] = {
 	{"dump-pcap-types",	no_argument,		NULL, 'D'},
 	{"dump-bpf",		no_argument,		NULL, 'B'},
     {"silent",		no_argument,		NULL, 's'},
-    {"normal",		no_argument,		NULL, 'Z'},
 	{"less",		no_argument,		NULL, 'q'},
 	{"hex",			no_argument,		NULL, 'X'},
 	{"ascii",		no_argument,		NULL, 'l'},
@@ -106,8 +107,11 @@ static const struct option long_options[] = {
 	{"update",		no_argument,		NULL, 'U'},
 	{"verbose",		no_argument,		NULL, 'V'},
 	{"version",		no_argument,		NULL, 'v'},
-	{"help",		no_argument,		NULL, 'h'},
-	{NULL, 0, NULL, 0}
+    {"help",		no_argument,		NULL, 'h'},
+    // these don't exist in netsniff-ng
+    {"ui",          no_argument,        NULL, 'Y'},
+    {"normal",		no_argument,		NULL, 'Z'},
+    {NULL, 0, NULL, 0}
 };
 
 static const char *copyright = "Please report bugs to https://github.com/nsone\n"
@@ -532,26 +536,26 @@ static void dns_summary(struct ctx *ctx)
     printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
     printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
     printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
-    printf("\r%12lu  malformed (%f%%)\n",
+    printf("\r%12lu  malformed (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_malformed,
            ((double)ctx->dns_ctxt.cnt_malformed / (double)ctx->dns_ctxt.seen)*100);
-    printf("\r%12lu  EDNS (%f%%)\n\n",
+    printf("\r%12lu  EDNS (%0.2f%%)\n\n",
            ctx->dns_ctxt.cnt_edns,
            ((double)ctx->dns_ctxt.cnt_edns / (double)ctx->dns_ctxt.seen)*100);
 
     printf("\r%12lu  Query flag\n", ctx->dns_ctxt.cnt_query);
     printf("\r%12lu  Reply flag\n\n", ctx->dns_ctxt.cnt_reply);
 
-    printf("\r%12lu  NOERROR (%f%%)\n",
+    printf("\r%12lu  NOERROR (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_noerror,
            ((double)ctx->dns_ctxt.cnt_status_noerror / (double)ctx->dns_ctxt.seen)*100);
-    printf("\r%12lu  SRVFAIL (%f%%)\n",
+    printf("\r%12lu  SRVFAIL (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_srvfail,
            ((double)ctx->dns_ctxt.cnt_status_srvfail / (double)ctx->dns_ctxt.seen)*100);
-    printf("\r%12lu  NXDOMAIN (%f%%)\n",
+    printf("\r%12lu  NXDOMAIN (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_nxdomain,
            ((double)ctx->dns_ctxt.cnt_status_nxdomain / (double)ctx->dns_ctxt.seen)*100);
-    printf("\r%12lu  REFUSED (%f%%)\n",
+    printf("\r%12lu  REFUSED (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_refused,
            ((double)ctx->dns_ctxt.cnt_status_refused / (double)ctx->dns_ctxt.seen)*100);
 
@@ -617,8 +621,13 @@ static void read_pcap(struct ctx *ctx)
 
 	drop_privileges(ctx->enforce, ctx->uid, ctx->gid);
 
-	printf("Running! Hang up with ^C!\n\n");
-	fflush(stdout);
+    if (!ctx->ui) {
+        printf("Running! Hang up with ^C!\n\n");
+        fflush(stdout);
+    }
+    else {
+        dnstop_ui(&ctx->dns_ctxt);
+    }
 
 	bug_on(gettimeofday(&start, NULL));
 
@@ -654,6 +663,9 @@ static void read_pcap(struct ctx *ctx)
                       ctx->link_type, ctx->print_mode,
                       fm.s_ll.sll_pkttype, &ctx->dns_ctxt);
 
+        if (ctx->ui)
+            dnstop_ui(&ctx->dns_ctxt);
+
 		if (ctx->device_out)
 			translate_pcap_to_txf(fdo, out, fm.tp_h.tp_snaplen);
 
@@ -678,14 +690,16 @@ out:
 
 	xfree(out);
 
-	fflush(stdout);
-	printf("\n");
-    printf("\r%12lu packets seen\n", ctx->tx_packets);
-	printf("\r%12lu packets truncated in file\n", trunced);
-    printf("\r%12lu bytes seen\n", ctx->tx_bytes);
-	printf("\r%12lu sec, %lu usec in total\n", diff.tv_sec, diff.tv_usec);
+    if (!ctx->ui) {
+        fflush(stdout);
+        printf("\n");
+        printf("\r%12lu packets seen\n", ctx->tx_packets);
+        printf("\r%12lu packets truncated in file\n", trunced);
+        printf("\r%12lu bytes seen\n", ctx->tx_bytes);
+        printf("\r%12lu sec, %lu usec in total\n", diff.tv_sec, diff.tv_usec);
 
-    dns_summary(ctx);
+        dns_summary(ctx);
+    }
 
 	if (!strncmp("-", ctx->device_in, strlen("-")))
 		dup2(fd, fileno(stdin));
@@ -992,8 +1006,13 @@ static void recv_only_or_dump(struct ctx *ctx)
 			fd = begin_single_pcap_file(ctx);
 	}
 
-	printf("Running! Hang up with ^C!\n\n");
-	fflush(stdout);
+    if (!ctx->ui) {
+        printf("Running! Hang up with ^C!\n\n");
+        fflush(stdout);
+    }
+    else {
+        dnstop_ui(&ctx->dns_ctxt);
+    }
 
 	bug_on(gettimeofday(&start, NULL));
 
@@ -1066,13 +1085,18 @@ next:
 		if (unlikely(ret < 0)) {
 			if (errno != EINTR)
 				panic("Poll failed!\n");
-		}
-	}
+        }
+
+        if (ctx->ui) {
+            dnstop_ui(&ctx->dns_ctxt);
+        }
+
+    }
 
 	bug_on(gettimeofday(&end, NULL));
 	timersub(&end, &start, &diff);
 
-    if (!(ctx->dump_dir && ctx->print_mode == PRINT_NONE)) {
+    if (!ctx->ui && !(ctx->dump_dir && ctx->print_mode == PRINT_NONE)) {
 		sock_rx_net_stats(sock, frame_count);
 
 		printf("\r%12lu  sec, %lu usec in total\n",
@@ -1080,7 +1104,7 @@ next:
 
         dns_summary(ctx);
 
-	} else {
+    } else if (!ctx->ui) {
 		printf("\n\n");
 		fflush(stdout);
 	}
@@ -1124,6 +1148,7 @@ static void init_ctx(struct ctx *ctx)
 	ctx->promiscuous = true;
 	ctx->randomize = false;
     ctx->hwtimestamp = true;
+    ctx->ui = false;
 
     dnsctxt_init(&ctx->dns_ctxt);
 
@@ -1179,7 +1204,8 @@ static void __noreturn help(void)
 	     "  -l|--ascii                     Print human-readable packet data\n"
 	     "  -U|--update                    Update GeoIP databases\n"
 	     "  -V|--verbose                   Be more verbose\n"
-	     "  -v|--version                   Show version and exit\n"
+         "  -Y|--ui                        Use curses UI interface\n"
+         "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
          "  dnstop-ng --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
@@ -1332,7 +1358,10 @@ int main(int argc, char **argv)
             break;
         case 'Z':
             ctx.print_mode = PRINT_NORM;
-			break;
+            break;
+        case 'Y':
+            ctx.ui = true;
+            break;
 		case 'X':
 			ctx.print_mode =
 				(ctx.print_mode == PRINT_ASCII) ?
@@ -1509,7 +1538,13 @@ int main(int argc, char **argv)
 	if (ctx.verbose)
 		printf("pcap file I/O method: %s\n", pcap_ops_group_to_str[ctx.pcap]);
 
+    if (ctx.ui)
+        dnstop_ui_init(1);
+
 	main_loop(&ctx);
+
+    if (ctx.ui)
+        dnstop_ui_shutdown();
 
 	if (!ctx.enforce)
 		xunlockme();

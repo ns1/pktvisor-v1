@@ -751,8 +751,10 @@ void bpf_parse_rules(char *rulefile, struct sock_fprog *bpf, uint32_t link_type)
 			     (unsigned int *) &sf_single.jt,
 			     (unsigned int *) &sf_single.jf,
 			     (unsigned int *) &sf_single.k);
-		if (unlikely(ret != 4))
-			panic("BPF syntax error!\n");
+        if (unlikely(ret != 4)) {
+            fprintf(stderr, "%s\n", buff);
+            panic("BPF syntax error!\n");
+        }
 
 		bpf->len++;
 		bpf->filter = xrealloc(bpf->filter, 1,
