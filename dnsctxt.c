@@ -75,7 +75,7 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
     }
 }
 
-int _sort_int_by_count(void *a, void *b) {
+int sort_int_by_count(void *a, void *b) {
     struct int32_entry *left = (struct int32_entry *)a;
     struct int32_entry *right = (struct int32_entry *)b;
     if (left->count == right->count)
@@ -87,7 +87,7 @@ int _sort_int_by_count(void *a, void *b) {
 }
 
 // XXX could be macro from int version
-int _sort_str_by_count(void *a, void *b) {
+int sort_str_by_count(void *a, void *b) {
     struct str_entry *left = (struct str_entry *)a;
     struct str_entry *right = (struct str_entry *)b;
     if (left->count == right->count)
@@ -105,7 +105,7 @@ void _print_table_int(struct int32_entry *table) {
     if (!table)
         return;
 
-    HASH_SORT(table, _sort_int_by_count);
+    HASH_SORT(table, sort_int_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         printf("%u %lu\n", entry->key, entry->count);
         if (++i > MAX_SUMMARY_SIZE)
@@ -121,7 +121,7 @@ void _print_table_ip(struct int32_entry *table) {
     if (!table)
         return;
 
-    HASH_SORT(table, _sort_int_by_count);
+    HASH_SORT(table, sort_int_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
         printf("%16s %lu\n", ip, entry->count);
@@ -137,7 +137,7 @@ void _print_table_str(struct str_entry *table) {
     if (!table)
         return;
 
-    HASH_SORT(table, _sort_str_by_count);
+    HASH_SORT(table, sort_str_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         printf("%20s %lu\n", entry->key, entry->count);
         if (++i > MAX_SUMMARY_SIZE)

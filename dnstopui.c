@@ -7,6 +7,7 @@
 #include <curses.h>
 #include <stdio.h>
 #include <signal.h>
+#include <arpa/inet.h>
 
 #include "dnstopui.h"
 
@@ -20,10 +21,31 @@ void gotsignalrm(int sig) {
     signal(sig, gotsignalrm);
 }
 
-void dnstop_ui_waitforkey(struct dnsctxt *dns_ctxt) {
-    mvprintw(getmaxy(w)-5, 0, "<hit key to continue>");
-    redraw(dns_ctxt);
-    while (getch() == ERR);
+void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
+    struct int32_entry *entry, *tmp_entry, *sorted_table;
+    char ip[INET_ADDRSTRLEN];
+    unsigned int i = 0;
+
+    if (!table)
+        return;
+
+    mvprintw(4, 0, "%s\n\n", txt_hdr);
+
+    // copy the table so we can sort it non destructively
+    sorted_table = NULL;
+    HASH_ITER(hh, table, entry, tmp_entry) {
+        HASH_ADD(hh_srt, sorted_table, key, sizeof(uint32_t), entry);
+    }
+
+    HASH_SRT(hh_srt, sorted_table, sort_int_by_count);
+    HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
+        inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
+        printw("%16s %lu\n", ip, entry->count);
+        if (++i > getmaxy(w) - 10)
+            break;
+    }
+    HASH_CLEAR(hh_srt, sorted_table);
+
 }
 
 void dnstop_ui_init(int interval) {
@@ -43,6 +65,7 @@ void dnstop_ui_init(int interval) {
 
 void redraw_header(struct dnsctxt *dns_ctxt) {
 
+    // see HEADER_SIZE def
     mvprintw(0, 0, "total  : %6lu, incming: %6lu, outgoing: %6lu, malformed: %6lu (%0.2f%%), EDNS: %6lu (%0.2f%%)",
              dns_ctxt->seen,
              dns_ctxt->incoming,
@@ -69,9 +92,19 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
 }
 
 void redraw(struct dnsctxt *dns_ctxt) {
+
     redraw_header(dns_ctxt);
+
+    redraw_table_ip(dns_ctxt->source_table, "Query Source IPs");
+
     refresh();
     do_redraw = false;
+}
+
+void dnstop_ui_waitforkey(struct dnsctxt *dns_ctxt) {
+    mvprintw(getmaxy(w)-2, 0, "<hit key to continue>");
+    redraw(dns_ctxt);
+    while (getch() == ERR);
 }
 
 void keyboard() {

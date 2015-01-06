@@ -23,14 +23,20 @@
 struct int32_entry {
     uint32_t key;
     uint64_t count;
+    // LRU hash
     UT_hash_handle hh;
+    // sorted hash
+    UT_hash_handle hh_srt;
 };
 
 // accumulator hash table keyed by string
 struct str_entry {
     char key[MAX_DNAME_LEN];
     uint64_t count;
+    // LRU hash
     UT_hash_handle hh;
+    // sorted hash
+    UT_hash_handle hh_srt;
 };
 
 // context structure that gets passed to dns processing function
@@ -82,5 +88,8 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt);
 void dnsctxt_count_ip(struct int32_entry **table, uint32_t key);
 void dnsctxt_count_name(struct str_entry **table, char *name);
 #define dnsctxt_count_int dnsctxt_count_ip
+
+int sort_int_by_count(void *a, void *b);
+int sort_str_by_count(void *a, void *b);
 
 #endif /* DNSCTXT_H */
