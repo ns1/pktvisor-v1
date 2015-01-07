@@ -1,18 +1,18 @@
-dnstop-ng-libs =	$(shell pkg-config --libs libnl-3.0) \
+pktvisor-libs =	$(shell pkg-config --libs libnl-3.0) \
 			$(shell pkg-config --libs libnl-genl-3.0) \
                         -lpthread \
                         -lldns \
                         -lncurses
 
 ifeq ($(CONFIG_LIBPCAP), 1)
-dnstop-ng-libs +=	-lpcap
+pktvisor-libs +=	-lpcap
 endif
 ifeq ($(CONFIG_GEOIP), 1)
-dnstop-ng-libs +=	-lGeoIP \
-                        -lz
+pktvisor-libs +=	-lGeoIP \
+                    -lz
 endif
 
-dnstop-ng-objs =	dissector.o \
+pktvisor-objs =	dissector.o \
 			dissector_eth.o \
 			dissector_80211.o \
 			dissector_netlink.o \
@@ -39,7 +39,7 @@ dnstop-ng-objs =	dissector.o \
 			proto_tcp.o \
             proto_udp.o \
             proto_dns.o \
-            dnstopui.o \
+            pktvisorui.o \
             dnsctxt.o \
 			proto_vlan.o \
 			proto_vlan_q_in_q.o \
@@ -68,23 +68,23 @@ dnstop-ng-objs =	dissector.o \
 			tprintf.o \
 			timer.o \
 			mac80211.o \
-            dnstop-ng.o
+            pktvisor.o
 
 ifeq ($(CONFIG_LIBPCAP), 1)
-dnstop-ng-objs +=	bpf_comp.o
+pktvisor-objs +=	bpf_comp.o
 endif
 ifeq ($(CONFIG_GEOIP), 1)
-dnstop-ng-objs +=	geoip.o
+pktvisor-objs +=	geoip.o
 endif
 ifeq ($(CONFIG_HWTSTAMP), 1)
-dnstop-ng-objs +=	tstamping.o
+pktvisor-objs +=	tstamping.o
 endif
 
-dnstop-ng-eflags = $(shell pkg-config --cflags libnl-3.0) \
+pktvisor-eflags = $(shell pkg-config --cflags libnl-3.0) \
 		     $(shell pkg-config --cflags libnl-genl-3.0) \
 		     -DNEED_TCPDUMP_LIKE_FILTER
 
-dnstop-ng-confs =	ether.conf \
+pktvisor-confs =	ether.conf \
 			tcp.conf \
 			udp.conf \
 			oui.conf \

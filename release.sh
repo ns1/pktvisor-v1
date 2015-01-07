@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
-make PREFIX=/opt/dnstop-ng CONFIG_TOOLS="dnstop-ng bpfc" CCACHE=ccache ETCDIR=/opt/dnstop-ng/etc
-make PREFIX=/opt/dnstop-ng CONFIG_TOOLS="dnstop-ng bpfc" CCACHE=ccache ETCDIR=/opt/dnstop-ng/etc install
+make PREFIX=/opt/pktvisor CONFIG_TOOLS="pktvisor bpfc" CCACHE=ccache ETCDIR=/opt/pktvisor/etc
+make PREFIX=/opt/pktvisor CONFIG_TOOLS="pktvisor bpfc" CCACHE=ccache ETCDIR=/opt/pktvisor/etc install

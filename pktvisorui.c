@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include "dnstopui.h"
+#include "pktvisorui.h"
 
 WINDOW *w;
 int redraw_interval;
@@ -48,7 +48,7 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
 
 }
 
-void dnstop_ui_init(int interval) {
+void pktvisor_ui_init(int interval) {
     w = initscr();
     cbreak();
     noecho();
@@ -101,7 +101,7 @@ void redraw(struct dnsctxt *dns_ctxt) {
     do_redraw = false;
 }
 
-void dnstop_ui_waitforkey(struct dnsctxt *dns_ctxt) {
+void pktvisor_ui_waitforkey(struct dnsctxt *dns_ctxt) {
     mvprintw(getmaxy(w)-2, 0, "<hit key to continue>");
     redraw(dns_ctxt);
     while (getch() == ERR);
@@ -111,7 +111,7 @@ void keyboard() {
 
 }
 
-void dnstop_ui(struct dnsctxt *dns_ctxt) {
+void pktvisor_ui(struct dnsctxt *dns_ctxt) {
 
     if (do_redraw || 0 == redraw_interval)
         redraw(dns_ctxt);
@@ -120,7 +120,7 @@ void dnstop_ui(struct dnsctxt *dns_ctxt) {
 
 }
 
-void dnstop_ui_shutdown() {
+void pktvisor_ui_shutdown() {
     endwin();
 }
 

@@ -36,7 +36,7 @@ DESTDIR=
 SBINDIR = $(PREFIX)/sbin
 INCDIR = $(PREFIX)/include
 ETCDIR ?= /etc
-ETCDIRE = $(ETCDIR)/netsniff-ng
+ETCDIRE = $(ETCDIR)/pktvisor
 MAN8DIR = $(PREFIX)/share/man/man8
 
 # Shut up make, helper warnings, parallel compilation!

@@ -1,5 +1,5 @@
 /*
- * dnstop-ng - dnstop for a new generation
+ * pktvisor
  * Copyright 2015 NSONE, Inc.
  * Copyright 2009-2013 Daniel Borkmann.
  * Copyright 2010 Emmanuel Roullit.
@@ -49,7 +49,7 @@
 #include "xmalloc.h"
 
 #include "dnsctxt.h"
-#include "dnstopui.h"
+#include "pktvisorui.h"
 
 enum dump_mode {
 	DUMP_INTERVAL_TIME,
@@ -626,7 +626,7 @@ static void read_pcap(struct ctx *ctx)
         fflush(stdout);
     }
     else {
-        dnstop_ui(&ctx->dns_ctxt);
+        pktvisor_ui(&ctx->dns_ctxt);
     }
 
 	bug_on(gettimeofday(&start, NULL));
@@ -664,7 +664,7 @@ static void read_pcap(struct ctx *ctx)
                       fm.s_ll.sll_pkttype, &ctx->dns_ctxt);
 
         if (ctx->ui)
-            dnstop_ui(&ctx->dns_ctxt);
+            pktvisor_ui(&ctx->dns_ctxt);
 
 		if (ctx->device_out)
 			translate_pcap_to_txf(fdo, out, fm.tp_h.tp_snaplen);
@@ -701,7 +701,7 @@ out:
         dns_summary(ctx);
     }
     else {
-        dnstop_ui_waitforkey(&ctx->dns_ctxt);
+        pktvisor_ui_waitforkey(&ctx->dns_ctxt);
     }
 
 	if (!strncmp("-", ctx->device_in, strlen("-")))
@@ -1014,7 +1014,7 @@ static void recv_only_or_dump(struct ctx *ctx)
         fflush(stdout);
     }
     else {
-        dnstop_ui(&ctx->dns_ctxt);
+        pktvisor_ui(&ctx->dns_ctxt);
     }
 
 	bug_on(gettimeofday(&start, NULL));
@@ -1091,7 +1091,7 @@ next:
         }
 
         if (ctx->ui) {
-            dnstop_ui(&ctx->dns_ctxt);
+            pktvisor_ui(&ctx->dns_ctxt);
         }
 
     }
@@ -1170,9 +1170,8 @@ static void destroy_ctx(struct ctx *ctx)
 
 static void __noreturn help(void)
 {
-    printf("dnstop-ng %s", VERSION_STRING);
-	puts("http://www.netsniff-ng.org\n\n"
-         "Usage: dnstop-ng [options] [filter-expression]\n"
+    printf("pktvisor %s", VERSION_STRING);
+    puts("Usage: pktvisor [options] [filter-expression]\n"
 	     "Options:\n"
 	     "  -i|-d|--dev|--in <dev|pcap|->  Input source as netdev, pcap or pcap stdin\n"
 	     "  -o|--out <dev|pcap|dir|cfg|->  Output sink as netdev, pcap, directory, trafgen, or stdout\n"
@@ -1211,14 +1210,14 @@ static void __noreturn help(void)
          "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
-         "  dnstop-ng --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
-         "  dnstop-ng --in wlan0 --rfraw --out dump.pcap --silent --bind-cpu 0\n"
-         "  dnstop-ng --in dump.pcap --mmap --out eth0 -k1000 --silent --bind-cpu 0\n"
-         "  dnstop-ng --in dump.pcap --out dump.cfg --silent --bind-cpu 0\n"
-         "  dnstop-ng --in eth0 --out eth1 --silent --bind-cpu 0 -J --type host\n"
-         "  dnstop-ng --in eth1 --out /opt/probe/ -s -m --interval 100MiB -b 0\n"
-         "  dnstop-ng --in vlan0 --out dump.pcap -c -u `id -u bob` -g `id -g bob`\n"
-         "  dnstop-ng --in any --filter http.bpf --jumbo-support --ascii -V\n\n"
+         "  pktvisor --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
+         "  pktvisor --in wlan0 --rfraw --out dump.pcap --silent --bind-cpu 0\n"
+         "  pktvisor --in dump.pcap --mmap --out eth0 -k1000 --silent --bind-cpu 0\n"
+         "  pktvisor --in dump.pcap --out dump.cfg --silent --bind-cpu 0\n"
+         "  pktvisor --in eth0 --out eth1 --silent --bind-cpu 0 -J --type host\n"
+         "  pktvisor --in eth1 --out /opt/probe/ -s -m --interval 100MiB -b 0\n"
+         "  pktvisor --in vlan0 --out dump.pcap -c -u `id -u bob` -g `id -g bob`\n"
+         "  pktvisor --in any --filter http.bpf --jumbo-support --ascii -V\n\n"
          "Filter Note:\n"
          "  The default filter if unspecified is 'udp port 53'\n"
          "Note:\n"
@@ -1230,9 +1229,7 @@ static void __noreturn help(void)
 
 static void __noreturn version(void)
 {
-    printf("dnstop-ng %s, Git id: %s\n", VERSION_LONG, GITVERSION);
-	puts("the packet sniffing beast\n"
-	     "http://www.netsniff-ng.org\n");
+    printf("pktvisor %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts(copyright);
 	die();
 }
@@ -1542,12 +1539,12 @@ int main(int argc, char **argv)
 		printf("pcap file I/O method: %s\n", pcap_ops_group_to_str[ctx.pcap]);
 
     if (ctx.ui)
-        dnstop_ui_init(1);
+        pktvisor_ui_init(1);
 
 	main_loop(&ctx);
 
     if (ctx.ui)
-        dnstop_ui_shutdown();
+        pktvisor_ui_shutdown();
 
 	if (!ctx.enforce)
 		xunlockme();

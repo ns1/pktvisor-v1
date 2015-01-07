@@ -18,7 +18,6 @@
 #include "pkt_buff.h"
 #include "dnsctxt.h"
 
-// dnstop
 struct _rfc1035_header {
     unsigned short id;
     unsigned int qr:1;
