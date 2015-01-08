@@ -36,10 +36,12 @@ void redraw_table_int(struct int32_entry *table, char *txt_hdr) {
     struct int32_entry *entry, *tmp_entry, *sorted_table;
     unsigned int i = 0;
 
-    if (!table)
-        return;
-
     mvprintw(4, 0, "%s\n\n", txt_hdr);
+
+    if (!table) {
+        printw("(no data)");
+        return;
+    }
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -62,10 +64,12 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
     char ip[INET_ADDRSTRLEN];
     unsigned int i = 0;
 
-    if (!table)
-        return;
-
     mvprintw(4, 0, "%s\n\n", txt_hdr);
+
+    if (!table) {
+        printw("(no data)");
+        return;
+    }
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -89,10 +93,11 @@ void redraw_table_str(struct str_entry *table, char *txt_hdr) {
     unsigned int i = 0;
     int max_len = 0;
 
-    if (!table)
-        return;
-
     mvprintw(4, 0, "%s\n\n", txt_hdr);
+    if (!table) {
+        printw("(no data)");
+        return;
+    }
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -104,7 +109,7 @@ void redraw_table_str(struct str_entry *table, char *txt_hdr) {
 
     HASH_SRT(hh_srt, sorted_table, sort_str_by_count);
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        printw("%-*s %lu\n", max_len, entry->key, entry->count);
+        printw("%-*s %lu\n", max_len, strlen(entry->key) ? entry->key : ".", entry->count);
         if (++i > getmaxy(w) - 10)
             break;
     }
@@ -140,7 +145,7 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
              dns_ctxt->cnt_edns,
              ((double)dns_ctxt->cnt_edns / (double)dns_ctxt->seen)*100);
 
-    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu",
+    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=query2, 2=query3, 3=src, 4=dest, 5=mal, 6=nx, 7=refused",
              dns_ctxt->cnt_query,
              dns_ctxt->cnt_reply);
 
@@ -179,7 +184,7 @@ void redraw(struct dnsctxt *dns_ctxt) {
         redraw_table_str(dns_ctxt->refused_table, "Refused Names");
         break;
     case SRC_PORT_TABLE:
-        redraw_table_ip(dns_ctxt->src_port_table, "Top Source Ports");
+        redraw_table_int(dns_ctxt->src_port_table, "Top Source Ports");
         break;
     case QUERY2_TABLE:
         redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)");
@@ -209,23 +214,23 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     switch (ch) {
     case '1':
     case 'q':
-        cur_target = QUERY3_TABLE;
+        cur_target = QUERY2_TABLE;
         break;
     case '2':
     case 's':
-        cur_target = SOURCE_TABLE;
+        cur_target = QUERY3_TABLE;
         break;
     case '3':
     case 'd':
-        cur_target = DEST_TABLE;
+        cur_target = SOURCE_TABLE;
         break;
     case '4':
     case 'm':
-        cur_target = MALFORMED_TABLE;
+        cur_target = DEST_TABLE;
         break;
     case '5':
     case 'w':
-        cur_target = QUERY3_TABLE;
+        cur_target = MALFORMED_TABLE;
         break;
     case '6':
     case 'n':
