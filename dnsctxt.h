@@ -53,7 +53,7 @@ struct dnsctxt {
     // src ports
     struct int32_entry *src_port_table;
 
-    // queried name tables, for 1,2,3 label lengths
+    // queried name tables, for 2,3 label lengths
     struct str_entry *query_name2_table;
     struct str_entry *query_name3_table;
 
