@@ -91,11 +91,21 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     // for pcap dumps -- they all show up as PACKET_HOST
 
     // source by ip
-    dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
-    // incoming: store source udp port
-    dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
-    // store dest by ip
-    dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
+    if (pkt->pkttype != PACKET_OUTGOING) {
+        dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
+        // incoming: store source udp port
+        dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
+        if (qh.qr == 1) {
+            // shouldn't see reply on incoming
+            dns_ctxt->cnt_malformed++;
+            dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
+            return;
+        }
+    }
+    else {
+        // store dest by ip
+        dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
+    }
 
     // Query/Reply flags
     if (qh.qr == 1) {
@@ -121,7 +131,8 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     }
 
     // XXX if we want to, we can branch here on incoming vs. outgong
-    // packets to not have to fully decode outgoing
+    // packets to not have to fully decode outgoing. however, we can't
+    // capture query names of NXDOMAIN, REFUSED, etc that way
 
     // incoming query: ldns will decode the full udp packet buffer
     ptr = pkt_pull(pkt, len);

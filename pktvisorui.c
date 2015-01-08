@@ -51,7 +51,7 @@ void redraw_table_int(struct int32_entry *table, char *txt_hdr) {
 
     HASH_SRT(hh_srt, sorted_table, sort_int_by_count);
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        printw("%16s %lu\n", entry->key, entry->count);
+        printw("%6u %lu\n", entry->key, entry->count);
         if (++i > getmaxy(w) - 10)
             break;
     }
@@ -239,6 +239,10 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     case '7':
     case 'r':
         cur_target = REFUSED_TABLE;
+        break;
+    case '8':
+    case 'p':
+        cur_target = SRC_PORT_TABLE;
         break;
     default:
         no_key = true;
