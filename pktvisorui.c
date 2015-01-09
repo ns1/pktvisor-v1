@@ -145,7 +145,7 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
              dns_ctxt->cnt_edns,
              ((double)dns_ctxt->cnt_edns / (double)dns_ctxt->seen)*100);
 
-    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=query2, 2=query3, 3=src, 4=dest, 5=mal, 6=nx, 7=refused",
+    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=query2, 2=query3, 3=src, 4=dest, 5=mal, 6=nx, 7=refused, 8=ports",
              dns_ctxt->cnt_query,
              dns_ctxt->cnt_reply);
 
