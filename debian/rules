@@ -18,4 +18,4 @@ override_dh_auto_build:
 	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor
 
 override_dh_auto_install:
-	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor
+	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor install
