@@ -15,7 +15,7 @@ override_dh_auto_clean: config.h
 override_dh_auto_configure: config.h
 
 override_dh_auto_build:
-	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor PREFIX=/opt/pktvisor CONFIG_TOOLS="pktvisor bpfc" ETCDIR=/opt/pktvisor/etc
+	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor
 
 override_dh_auto_install:
-	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor PREFIX=/opt/pktvisor CONFIG_TOOLS="pktvisor bpfc" ETCDIR=/opt/pktvisor/etc install
+	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor
