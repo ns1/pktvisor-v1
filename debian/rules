@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+%:
+	dh $@  --with autotools-dev
+
+config.h:
+	./configure
+
+override_dh_auto_clean: config.h
+
+override_dh_auto_configure: config.h
+
+override_dh_auto_build:
+	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor PREFIX=/opt/pktvisor CONFIG_TOOLS="pktvisor bpfc" ETCDIR=/opt/pktvisor/etc
+
+override_dh_auto_install:
+	make CCACHE=ccache DESTDIR=$(CURDIR)/debian/pktvisor PREFIX=/opt/pkvisor CONFIG_TOOLS="pktvisor bpfc" ETCDIR=/opt/pktvisor/etc install

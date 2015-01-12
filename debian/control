@@ -1,0 +1,20 @@
+Source: pktvisor
+Section: net
+Maintainer: Shannon Weyrick <sweyrick@nsone.net>
+Priority: optional
+Build-Depends: bison,
+               cmake,
+               debhelper (>= 7),
+               dpkg-dev (>= 1.16.1~),
+               flex,
+               libcli-dev,
+               libgeoip-dev,
+               libnacl-dev,
+               libncurses5-dev
+Standards-Version: 3.9.4
+Homepage: http://github.com/nsone/
+
+Package: pktvisor
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: packet analyzer and visualizer

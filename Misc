@@ -6,7 +6,8 @@ nacl:
 tarball.gz:  ; $(call GIT_ARCHIVE,gzip,gz)
 tarball.bz2: ; $(call GIT_ARCHIVE,bzip2,bz2)
 tarball.xz:  ; $(call GIT_ARCHIVE,xz,xz)
-tarball: tarball.gz tarball.bz2 tarball.xz
+# tarball: tarball.gz tarball.bz2 tarball.xz
+tarball: tarball.bz2
 
 tag:
 	$(GIT_TAG)
@@ -41,7 +42,7 @@ sign:
 	$(call GPG_SIGN,bz2)
 	$(call GPG_SIGN,xz)
 
-release: tag announcement tarball sign
+release: tag tarball
 	$(Q)echo "Released $(bold)$(VERSION_SHORT)$(normal)"
 
 FIND_SOURCE_FILES = ( git ls-files '*.[hcS]' 2>/dev/null || \

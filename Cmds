@@ -46,9 +46,9 @@ GZIP = gzip --best -c
 
 # Git related
 GIT_LAST_TAG = git describe --abbrev=0 v$(VERSION_SHORT)^
-GIT_ARCHIVE = git archive --prefix=netsniff-ng-$(VERSION_SHORT)/ v$(VERSION_SHORT) | \
-	      $(1) > ../netsniff-ng-$(VERSION_SHORT).tar.$(2)
-GIT_TAG = git tag -a v$(VERSION_SHORT) -s -m "$(VERSION_SHORT) release"
+GIT_ARCHIVE = git archive --prefix=pktvisor-$(VERSION_SHORT)/ v$(VERSION_SHORT) | \
+	      $(1) > ../pktvisor-$(VERSION_SHORT).tar.$(2)
+GIT_TAG = git tag -a v$(VERSION_SHORT) -m "$(VERSION_SHORT) release"
 GIT_LOG = git shortlog -n $(shell $(GIT_LAST_TAG))..HEAD
 GIT_REM = git ls-files -o | xargs rm -rf
 GIT_PEOPLE = git log --no-merges $(shell $(GIT_LAST_TAG))..HEAD | grep Author: | cut -d: -f2 | \
