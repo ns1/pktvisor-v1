@@ -26,7 +26,7 @@
 
 #include "ring_rx.h"
 #include "ring_tx.h"
-#include "mac80211.h"
+//#include "mac80211.h"
 #include "dev.h"
 #include "built_in.h"
 #include "pcap_io.h"
@@ -229,6 +229,7 @@ static void pcap_to_xmit(struct ctx *ctx)
 			panic("Error prepare reading pcap!\n");
 	}
 
+    /*
 	if (ctx->rfraw) {
 		ctx->device_trans = xstrdup(ctx->device_out);
 		xfree(ctx->device_out);
@@ -236,7 +237,8 @@ static void pcap_to_xmit(struct ctx *ctx)
 		enter_rfmon_mac80211(ctx->device_trans, &ctx->device_out);
 		if (ctx->link_type != LINKTYPE_IEEE802_11)
 			panic("Wrong linktype of pcap!\n");
-	}
+    }
+    */
 
 	ifindex = device_ifindex(ctx->device_out);
 	size = ring_size(ctx->device_out, ctx->reserve_size);
@@ -333,8 +335,10 @@ out:
 	dissector_cleanup_all();
 	destroy_tx_ring(tx_sock, &tx_ring);
 
+    /*
 	if (ctx->rfraw)
-		leave_rfmon_mac80211(ctx->device_out);
+        leave_rfmon_mac80211(ctx->device_out);
+    */
 
 	if (__pcap_io->prepare_close_pcap)
 		__pcap_io->prepare_close_pcap(fd, PCAP_MODE_RD);
@@ -948,13 +952,15 @@ static void recv_only_or_dump(struct ctx *ctx)
 
 	sock = pf_socket();
 
+    /*
 	if (ctx->rfraw) {
 		ctx->device_trans = xstrdup(ctx->device_in);
 		xfree(ctx->device_in);
 
 		enter_rfmon_mac80211(ctx->device_trans, &ctx->device_in);
 		ctx->link_type = LINKTYPE_IEEE802_11;
-	}
+    }
+    */
 
 	ifindex = device_ifindex(ctx->device_in);
 
@@ -1119,8 +1125,10 @@ next:
 	if (ctx->promiscuous)
 		device_leave_promiscuous_mode(ctx->device_in, ifflags);
 
+    /*
 	if (ctx->rfraw)
-		leave_rfmon_mac80211(ctx->device_in);
+        leave_rfmon_mac80211(ctx->device_in);
+    */
 
 	if (dump_to_pcap(ctx)) {
 		if (ctx->dump_dir)

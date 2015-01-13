@@ -14,8 +14,8 @@
 #include "proto.h"
 #include "dissector.h"
 #include "dissector_eth.h"
-#include "dissector_80211.h"
-#include "dissector_netlink.h"
+//#include "dissector_80211.h"
+//#include "dissector_netlink.h"
 #include "linktype.h"
 
 int dissector_set_print_type(void *ptr, int type)
@@ -80,7 +80,8 @@ void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, 
 	case ___constant_swab32(LINKTYPE_EN10MB):
 		proto_start = dissector_get_ethernet_entry_point();
 		proto_end = dissector_get_ethernet_exit_point();
-		break;
+        break;
+    /*
 	case LINKTYPE_IEEE802_11:
 	case ___constant_swab32(LINKTYPE_IEEE802_11):
 		proto_start = dissector_get_ieee80211_entry_point();
@@ -90,7 +91,8 @@ void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, 
 	case ___constant_swab32(LINKTYPE_NETLINK):
 		proto_start = dissector_get_netlink_entry_point();
 		proto_end = dissector_get_netlink_exit_point();
-		break;
+        break;
+    */
 	default:
 		proto_start = &none_ops;
 		proto_end = NULL;
@@ -118,13 +120,13 @@ void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode, 
 void dissector_init_all(int fnttype)
 {
 	dissector_init_ethernet(fnttype);
-	dissector_init_ieee80211(fnttype);
-	dissector_init_netlink(fnttype);
+    //dissector_init_ieee80211(fnttype);
+    //dissector_init_netlink(fnttype);
 }
 
 void dissector_cleanup_all(void)
 {
 	dissector_cleanup_ethernet();
-	dissector_cleanup_ieee80211();
-	dissector_cleanup_netlink();
+    //dissector_cleanup_ieee80211();
+    //dissector_cleanup_netlink();
 }

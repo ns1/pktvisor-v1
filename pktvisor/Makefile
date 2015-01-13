@@ -1,21 +1,17 @@
-pktvisor-libs =	$(shell pkg-config --libs libnl-3.0) \
-			$(shell pkg-config --libs libnl-genl-3.0) \
-                        -lpthread \
-                        -lldns \
-                        -lncurses
+pktvisor-libs =	  -lpthread \
+		  -lldns \
+		  -lncurses
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 pktvisor-libs +=	-lpcap
 endif
 ifeq ($(CONFIG_GEOIP), 1)
 pktvisor-libs +=	-lGeoIP \
-                    -lz
+			-lz
 endif
 
 pktvisor-objs =	dissector.o \
 			dissector_eth.o \
-			dissector_80211.o \
-			dissector_netlink.o \
 			lookup.o \
 			proto_arp.o \
 			proto_ethernet.o \
@@ -34,17 +30,15 @@ pktvisor-objs =	dissector.o \
 			proto_ipv6_no_nxt_hdr.o \
 			proto_ipv6_routing.o \
 			proto_lldp.o \
-			proto_nlmsg.o \
 			proto_none.o \
 			proto_tcp.o \
-            proto_udp.o \
-            proto_dns.o \
-            pktvisorui.o \
-            dnsctxt.o \
+			proto_udp.o \
+			proto_dns.o \
+			pktvisorui.o \
+			dnsctxt.o \
 			proto_vlan.o \
 			proto_vlan_q_in_q.o \
 			proto_mpls_unicast.o \
-			proto_80211_mac_hdr.o \
 			privs.o \
 			proc.o \
 			dev.o \
@@ -67,8 +61,7 @@ pktvisor-objs =	dissector.o \
 			ring.o \
 			tprintf.o \
 			timer.o \
-			mac80211.o \
-            pktvisor.o
+			pktvisor.o
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 pktvisor-objs +=	bpf_comp.o
