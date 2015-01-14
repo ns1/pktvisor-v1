@@ -71,7 +71,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:RGAP:Vu:g:T:DBU";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBU";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
