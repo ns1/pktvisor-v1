@@ -1,6 +1,6 @@
 /*
- * netsniff-ng - the packet sniffing beast
- * Copyrit 2014 NSONE, Inc.
+ * DNS protocol dissector
+ * Copyrit 2015 NSONE, Inc.
  * Copyright 2009, 2010 Daniel Borkmann.
  * Subject to the GPL, version 2.
  */
@@ -9,43 +9,36 @@
 #include <stdint.h>
 #include <netinet/in.h>    /* for ntohs() */
 #include <linux/if_packet.h>
-
-#include <ldns/ldns.h>
+#include <string.h>
 
 #include "proto.h"
 #include "protos.h"
 #include "lookup.h"
 #include "pkt_buff.h"
 #include "dnsctxt.h"
-
-struct _rfc1035_header {
-    unsigned short id;
-    unsigned int qr:1;
-    unsigned int opcode:4;
-    unsigned int aa:1;
-    unsigned int tc:1;
-    unsigned int rd:1;
-    unsigned int ra:1;
-    unsigned int rcode:4;
-    unsigned short qdcount;
-    unsigned short ancount;
-    unsigned short nscount;
-    unsigned short arcount;
-};
+#include "dns.h"
 
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
-    uint8_t *ptr = NULL;
+    uint8_t *ptr = pkt_pull(pkt, len);
+    char qname[DNS_D_MAXNAME+1];
+    struct dns_rr rr;
 
-    // for simple DNS header decode
-    unsigned short us;
-    struct _rfc1035_header qh;
+    // XXX figure out how to make this dns_packet on stack using dns_p_init and pointing directly to
+    // data in ptr
+    int error = 0;
+    struct dns_packet *dns_pkt = dns_p_make(len, &error);
+    if (error) {
+        if (dns_pkt)
+            free(dns_pkt);
+        fprintf(stderr, "dns_p_make fail: %s", strerror(error));
+        return;
+    }
+    memcpy(dns_pkt->data, ptr, len);
+    dns_pkt->end = len;
 
-    // for full DNS wire decode by ldns
-    ldns_pkt *dns_pkt = NULL;
-    char *q_name = NULL;
-    ldns_status status;
+    struct dns_rr_i *I = dns_rr_i_new(dns_pkt, .section = DNS_S_QUESTION);
 
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
 
@@ -58,31 +51,10 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     }
 
     // sanity check total len
-    if (!len || len < sizeof(qh)) {
+    if (!len || len < sizeof(struct dns_header)) {
         dns_ctxt->cnt_malformed++;
         return;
     }
-
-    // do a simple header decode first
-    memcpy(&us, pkt->data + 0, 2);
-    qh.id = ntohs(us);
-    memcpy(&us, pkt->data + 2, 2);
-    us = ntohs(us);
-    qh.qr = (us >> 15) & 0x01;
-    qh.opcode = (us >> 11) & 0x0F;
-    qh.aa = (us >> 10) & 0x01;
-    qh.tc = (us >> 9) & 0x01;
-    qh.rd = (us >> 8) & 0x01;
-    qh.ra = (us >> 7) & 0x01;
-    qh.rcode = us & 0x0F;
-    memcpy(&us, pkt->data + 4, 2);
-    qh.qdcount = ntohs(us);
-    memcpy(&us, pkt->data + 6, 2);
-    qh.ancount = ntohs(us);
-    memcpy(&us, pkt->data + 8, 2);
-    qh.nscount = ntohs(us);
-    memcpy(&us, pkt->data + 10, 2);
-    qh.arcount = ntohs(us);
 
     // table counters
 
@@ -95,11 +67,10 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
         // incoming: store source udp port
         dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
-        if (qh.qr == 1) {
+        if (dns_header(dns_pkt)->qr == 1) {
             // shouldn't see reply on incoming
             dns_ctxt->cnt_malformed++;
             dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
-            return;
         }
     }
     else {
@@ -108,24 +79,24 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     }
 
     // Query/Reply flags
-    if (qh.qr == 1) {
+    if (dns_header(dns_pkt)->qr == 1) {
         dns_ctxt->cnt_reply++;
     }
     else {
         dns_ctxt->cnt_query++;
     }
     // result code
-    switch (qh.rcode) {
-    case LDNS_RCODE_NOERROR:
+    switch (dns_header(dns_pkt)->rcode) {
+    case DNS_RC_NOERROR:
         dns_ctxt->cnt_status_noerror++;
         break;
-    case LDNS_RCODE_NXDOMAIN:
+    case DNS_RC_NXDOMAIN:
         dns_ctxt->cnt_status_nxdomain++;
         break;
-    case LDNS_RCODE_REFUSED:
+    case DNS_RC_REFUSED:
         dns_ctxt->cnt_status_refused++;
         break;
-    case LDNS_RCODE_SERVFAIL:
+    case DNS_RC_SERVFAIL:
         dns_ctxt->cnt_status_srvfail++;
         break;
     }
@@ -134,77 +105,95 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     // packets to not have to fully decode outgoing. however, we can't
     // capture query names of NXDOMAIN, REFUSED, etc that way
 
-    // incoming query: ldns will decode the full udp packet buffer
-    ptr = pkt_pull(pkt, len);
-    status = ldns_wire2pkt(&dns_pkt, ptr, len);
-    if (status != LDNS_STATUS_OK) {
-        dns_ctxt->cnt_malformed++;
-        // only add to malformed table if this is an incoming query,
-        // because the authoritative server may echo back an invalid
-        // query part with REFUSED
-        if (pkt->pkttype == PACKET_HOST)
-            dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
-        return;
+    // XXX detect malformed DNS packet here?
+    if (dns_rr_grep(&rr, 1, I, dns_pkt, &error)) {
+        if (!dns_d_expand((unsigned char *)qname, DNS_D_MAXNAME, rr.dn.p, dns_pkt, &error) && !error)
+            goto finalize;
     }
 
-    q_name = ldns_rdf2str(ldns_rr_owner(ldns_rr_list_rr(
-                                            ldns_pkt_question(dns_pkt), 0)));
-    if (q_name) {
+    // lowercase
+    char *p = qname;
+    for ( ; *p; ++p) *p = tolower(*p);
+    // chop terminating .
+    qname[strlen(qname)-1] = 0;
 
-        // lowercase
-        char *p = q_name;
-        for ( ; *p; ++p) *p = tolower(*p);
-        // chop terminating .
-        q_name[strlen(q_name)-1] = 0;
-
-        // break this out to labels of len 2 and 3
-        // assumes terminating ".", which ldns always gives us in q_name
-        char *part = q_name + strlen(q_name) - 1;
-        // zip to TLD .
-        while (part > q_name && *part != '.')
-            part--;
+    // break this out to labels of len 2 and 3
+    // assumes terminating ".", which ldns always gives us in qname
+    char *part = qname + strlen(qname) - 1;
+    // zip to TLD .
+    while (part > qname && *part != '.')
         part--;
-        // zip to zone, or q_name begin
-        while (part > q_name && *part != '.')
+    part--;
+    // zip to zone, or qname begin
+    while (part > qname && *part != '.')
+        part--;
+    // if not qname begin, start after .
+    if (part == qname) {
+        dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
+    }
+    else {
+        dnsctxt_count_name(&dns_ctxt->query_name2_table, part+1);
+        // may be go one more label length
+        part--;
+        while (part > qname && *part != '.')
             part--;
-        // if not q_name begin, start after .
-        if (part == q_name) {
-            dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
-        }
-        else {
-            dnsctxt_count_name(&dns_ctxt->query_name2_table, part+1);
-            // may be go one more label length
-            part--;
-            while (part > q_name && *part != '.')
-                part--;
-            if (part == q_name)
-                dnsctxt_count_name(&dns_ctxt->query_name3_table, part);
-            else
-                // anything longer gets squished into this domain
-                dnsctxt_count_name(&dns_ctxt->query_name3_table, part+1);
-        }
-
-        // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
-        // and REFUSED counts
-        if (qh.qr && qh.rcode != LDNS_RCODE_NOERROR) {
-            switch (qh.rcode) {
-            case LDNS_RCODE_NXDOMAIN:
-                dnsctxt_count_name(&dns_ctxt->nxdomain_table, q_name);
-                break;
-            case LDNS_RCODE_REFUSED:
-                dnsctxt_count_name(&dns_ctxt->refused_table, q_name);
-                break;
-            }
-        }
-
-        free(q_name);
+        if (part == qname)
+            dnsctxt_count_name(&dns_ctxt->query_name3_table, part);
+        else
+            // anything longer gets squished into this domain
+            dnsctxt_count_name(&dns_ctxt->query_name3_table, part+1);
     }
 
-    if (ldns_pkt_edns(dns_pkt)) {
-        dns_ctxt->cnt_edns++;
+    // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
+    // and REFUSED counts
+    if (dns_header(dns_pkt)->qr == 1 && dns_header(dns_pkt)->rcode != DNS_RC_NOERROR) {
+        switch (dns_header(dns_pkt)->rcode) {
+        case DNS_RC_NXDOMAIN:
+            dnsctxt_count_name(&dns_ctxt->nxdomain_table, qname);
+            break;
+        case DNS_RC_REFUSED:
+            dnsctxt_count_name(&dns_ctxt->refused_table, qname);
+            break;
+        }
     }
 
-    ldns_pkt_free(dns_pkt);
+    // XXX look for OPT, edns, client subnet
+finalize:
+    free(dns_pkt);
+
+}
+
+void print_dns_packet(struct dns_packet *P) {
+
+    enum dns_section section;
+    struct dns_rr rr;
+    int error;
+    char qname[DNS_D_MAXNAME+1];
+
+    struct dns_rr_i *I = dns_rr_i_new(P, .section = 0);
+
+    tprintf(" [ DNS Header ");
+    tprintf(" qr: %s(%d),", (dns_header(P)->qr)? "RESPONSE" : "QUERY", dns_header(P)->qr);
+    tprintf(" opcode: %s(%d),", dns_stropcode(dns_header(P)->opcode), dns_header(P)->opcode);
+    tprintf(" aa: %s(%d),", (dns_header(P)->aa)? "AUTHORITATIVE" : "NON-AUTHORITATIVE", dns_header(P)->aa);
+    tprintf(" tc: %s(%d),", (dns_header(P)->tc)? "TRUNCATED" : "NOT-TRUNCATED", dns_header(P)->tc);
+    tprintf(" rd: %s(%d),", (dns_header(P)->rd)? "RECURSION-DESIRED" : "RECURSION-NOT-DESIRED", dns_header(P)->rd);
+    tprintf(" ra: %s(%d),", (dns_header(P)->ra)? "RECURSION-ALLOWED" : "RECURSION-NOT-ALLOWED", dns_header(P)->ra);
+    tprintf(" rcode: %s(%d) ]\n", dns_strrcode(dns_header(P)->rcode), dns_header(P)->rcode);
+
+    section	= 0;
+
+    while (dns_rr_grep(&rr, 1, I, P, &error)) {
+        if (section != rr.section)
+            tprintf(" [ DNS Section %s:%d ]\n", dns_strsection(rr.section), dns_p_count(P, rr.section));
+
+        if (rr.section == DNS_S_QUESTION) {
+            if (dns_d_expand((unsigned char *)qname, DNS_D_MAXNAME, rr.dn.p, P, &error) && !error)
+                tprintf(" [ DNS Question: %s ]\n", qname);
+        }
+
+        section	= rr.section;
+    }
 
 }
 
@@ -213,27 +202,22 @@ void print_dns(struct pkt_buff *pkt, void *ctxt)
     size_t   len = pkt_len(pkt);
     uint8_t *ptr = pkt_pull(pkt, len);
 
-    ldns_pkt *dns_pkt = NULL;
-    ldns_status status;
-
-    if (!len)
-        return;
-
-    status = ldns_wire2pkt(&dns_pkt, ptr, len);
-    if (status != LDNS_STATUS_OK) {
-        tprintf(" [ DNS: MALFORMED DNS PACKET ]\n");
-        // backout the data so it dumps as hex
-        pkt->data -= len;
+    // XXX figure out how to make this dns_packet on stack using dns_p_init
+    int err;
+    struct dns_packet *dns_pkt = dns_p_make(len, &err);
+    if (err) {
+        if (dns_pkt)
+            free(dns_pkt);
+        fprintf(stderr, "dns_p_make fail: %d", err);
         return;
     }
+    memcpy(dns_pkt->data, ptr, len);
+    dns_pkt->end = len;
+    print_dns_packet(dns_pkt);
+    free(dns_pkt);
 
-    // XXX this is very verbose, make something more useful
-    char *pkt_str = ldns_pkt2str(dns_pkt);
-
-    tprintf(" [ DNS %s ]\n", pkt_str);
-
-    free(pkt_str);
-    ldns_pkt_free(dns_pkt);
+    // set len back so we get hex dump
+    pkt->data -= len;
 
 }
 

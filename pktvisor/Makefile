@@ -1,5 +1,4 @@
 pktvisor-libs =	  -lpthread \
-		  -lldns \
 		  -lncurses
 
 ifeq ($(CONFIG_LIBPCAP), 1)
@@ -53,6 +52,7 @@ pktvisor-objs =	dissector.o \
 			hash.o \
 			bpf.o \
 			oui.o \
+			dns.o \
 			pcap_rw.o \
 			pcap_sg.o \
 			pcap_mm.o \
