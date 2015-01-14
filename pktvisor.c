@@ -58,7 +58,7 @@ enum dump_mode {
 
 struct ctx {
 	char *device_in, *device_out, *device_trans, *filter, *prefix;
-	int cpu, rfraw, dump, print_mode, dump_dir, packet_type;
+    int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
     bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
@@ -88,7 +88,7 @@ static const struct option long_options[] = {
 	{"group",		required_argument,	NULL, 'g'},
 	{"magic",		required_argument,	NULL, 'T'},
 	{"rand",		no_argument,		NULL, 'r'},
-	{"rfraw",		no_argument,		NULL, 'R'},
+//	{"rfraw",		no_argument,		NULL, 'R'},
 	{"mmap",		no_argument,		NULL, 'm'},
 	{"sg",			no_argument,		NULL, 'G'},
 	{"clrw",		no_argument,		NULL, 'c'},
@@ -200,7 +200,7 @@ static void pcap_to_xmit(struct ctx *ctx)
 	struct timeval start, end, diff;
 	pcap_pkthdr_t phdr;
 
-	if (!device_up_and_running(ctx->device_out) && !ctx->rfraw)
+    if (!device_up_and_running(ctx->device_out) /*&& !ctx->rfraw*/)
 		panic("Device not up and running!\n");
 
 	bug_on(!__pcap_io);
@@ -1186,7 +1186,6 @@ static void __noreturn help(void)
 	     "  -f|--filter <bpf-file|expr>    Use BPF filter file from bpfc or tcpdump-like expression\n"
 	     "  -t|--type <type>               Filter for: host|broadcast|multicast|others|outgoing\n"
 	     "  -F|--interval <size|time>      Dump interval if -o is a dir: <num>KiB/MiB/GiB/s/sec/min/hrs\n"
-	     "  -R|--rfraw                     Capture or inject raw 802.11 frames\n"
 	     "  -n|--num <0|uint>              Number of packets until exit (def: 0)\n"
 	     "  -P|--prefix <name>             Prefix for pcaps stored in directory\n"
 	     "  -T|--magic <pcap-magic>        Pcap magic number/pcap format to store, see -D\n"
@@ -1219,7 +1218,6 @@ static void __noreturn help(void)
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
          "  pktvisor --in eth0 --out dump.pcap -s -T 0xa1b2c3d4 --b 0 tcp or udp\n"
-         "  pktvisor --in wlan0 --rfraw --out dump.pcap --silent --bind-cpu 0\n"
          "  pktvisor --in dump.pcap --mmap --out eth0 -k1000 --silent --bind-cpu 0\n"
          "  pktvisor --in dump.pcap --out dump.cfg --silent --bind-cpu 0\n"
          "  pktvisor --in eth0 --out eth1 --silent --bind-cpu 0 -J --type host\n"
@@ -1265,11 +1263,13 @@ int main(int argc, char **argv)
 			break;
 		case 'P':
 			ctx.prefix = xstrdup(optarg);
-			break;
+            break;
+            /*
 		case 'R':
 			ctx.link_type = LINKTYPE_IEEE802_11;
 			ctx.rfraw = 1;
-			break;
+            break;
+            */
 		case 'r':
 			ctx.randomize = true;
 			break;
@@ -1507,7 +1507,7 @@ int main(int argc, char **argv)
 	}
 
 	if (device_mtu(ctx.device_in) || !strncmp("any", ctx.device_in, strlen(ctx.device_in))) {
-		if (!ctx.rfraw)
+        //if (!ctx.rfraw)
 			ctx.link_type = pcap_devtype_to_linktype(ctx.device_in);
 		if (!ctx.device_out) {
 			ctx.dump = 0;
