@@ -21,25 +21,12 @@
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
-    uint8_t *ptr = pkt_pull(pkt, len);
+    int error;
     char qname[DNS_D_MAXNAME+1];
     struct dns_rr rr;
 
-    // XXX figure out how to make this dns_packet on stack using dns_p_init and pointing directly to
-    // data in ptr
-    int error = 0;
-    struct dns_packet *dns_pkt = dns_p_make(len, &error);
-    if (error) {
-        if (dns_pkt)
-            free(dns_pkt);
-        fprintf(stderr, "dns_p_make fail: %s", strerror(error));
-        return;
-    }
-    memcpy(dns_pkt->data, ptr, len);
-    dns_pkt->end = len;
-
+    struct dns_packet *dns_pkt = dns_p_new(512);
     struct dns_rr_i *I = dns_rr_i_new(dns_pkt, .section = DNS_S_QUESTION);
-
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
 
     // basic counts
@@ -51,10 +38,16 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     }
 
     // sanity check total len
-    if (!len || len < sizeof(struct dns_header)) {
+    if (!len || len < sizeof(struct dns_header) || len > 512) {
         dns_ctxt->cnt_malformed++;
         return;
     }
+
+    // XXX this isn't really "zero copy" then, since the way the dns lib is setup, we have to copy
+    // the pkt data into the dns_packet buffer. but, it's on the stack at least. if we
+    // rework the lib a bit, could use a (optional?) pointer instead of in structure buf
+    memcpy(dns_pkt->data, pkt->data, len);
+    dns_pkt->end = len;
 
     // table counters
 
@@ -157,9 +150,9 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         }
     }
 
-    // XXX look for OPT, edns, client subnet
 finalize:
-    free(dns_pkt);
+    // XXX look for OPT, edns, client subnet
+    return;
 
 }
 
@@ -199,26 +192,17 @@ void print_dns_packet(struct dns_packet *P) {
 
 void print_dns(struct pkt_buff *pkt, void *ctxt)
 {
-    size_t   len = pkt_len(pkt);
-    uint8_t *ptr = pkt_pull(pkt, len);
+    struct dns_packet *dns_pkt = dns_p_new(512);
+    size_t len = pkt_len(pkt);
 
-    // XXX figure out how to make this dns_packet on stack using dns_p_init
-    int err;
-    struct dns_packet *dns_pkt = dns_p_make(len, &err);
-    if (err) {
-        if (dns_pkt)
-            free(dns_pkt);
-        fprintf(stderr, "dns_p_make fail: %d", err);
+    if (len > 512) {
+        tprintf(" [ DNS Malformed (too big: %lu) ]\n", len);
         return;
     }
-    memcpy(dns_pkt->data, ptr, len);
+
+    memcpy(dns_pkt->data, pkt->data, len);
     dns_pkt->end = len;
     print_dns_packet(dns_pkt);
-    free(dns_pkt);
-
-    // set len back so we get hex dump
-    pkt->data -= len;
-
 }
 
 
