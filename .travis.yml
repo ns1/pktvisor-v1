@@ -8,3 +8,6 @@ before_install:
   - sudo apt-get install -qq libgeoip-dev liburcu-dev libpcap-dev libnet1-dev libcli-dev
 
 script: CC=$CC ./configure && make CC=$CC
+notifications:
+  slack:
+    secure: kXWHt2FwGzohgwmwDH262R3B359iRmsjPE/wF90ur6/TOfTvxuZicpPOVWsglgDgVP92zMklwgOs941IJmg4VVvqjuvDYeaMB+KLHvxb4Vl0pOg7mLpOXmIVt3NwL3+miSwoQ24XHJb6vGzubeHAjSXpD0N1tVxb792DvHztDTo=
