@@ -267,8 +267,9 @@ void pktvisor_ui(struct dnsctxt *dns_ctxt) {
 }
 
 void pktvisor_ui_waitforkey(struct dnsctxt *dns_ctxt) {
-    mvprintw(getmaxy(w)-2, 0, "<hit Q to continue>");
     redraw(dns_ctxt);
+    mvprintw(getmaxy(w)-2, 0, "<hit q to continue>");
+    refresh();
     while (keyboard(dns_ctxt) != 'q');
 }
 
