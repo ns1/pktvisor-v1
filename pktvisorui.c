@@ -77,8 +77,14 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
         HASH_ADD(hh_srt, sorted_table, key, sizeof(uint32_t), entry);
     }
 
+    // XXX figure out how many we'll actually be showing
+    // XXX check on progress of reverse DNS for each, or kick off new request if it's not started
+    // XXX copy reverse name into reverse hash if it's available, and indicate no reverse if necessary
+
     HASH_SRT(hh_srt, sorted_table, sort_int_by_count);
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
+        // XXX lookup in reverse table the ip address
+        // XXX indicate if the reverse is in progress, or none exists, or show reverse name
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
         printw("%16s %lu\n", ip, entry->count);
         if (++i > getmaxy(w) - 10)

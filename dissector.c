@@ -30,10 +30,10 @@ int dissector_set_print_type(void *ptr, int type)
 		case PRINT_LESS:
 			proto->process = proto->print_less;
 			break;
-		default:
+        default:
             proto->process = proto->visit;
-			break;
-		}
+            break;
+        }
 	}
 
 	return 0;

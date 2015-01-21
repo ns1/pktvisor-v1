@@ -9,7 +9,7 @@
 
 // uthash LRU: https://gist.github.com/jehiah/900846
 
-void dnsctxt_init(struct dnsctxt *ctxt) {
+void dnsctxt_init(struct dnsctxt *ctxt, uint32_t local_net, uint8_t local_bits) {
 
     ctxt->source_table = NULL;
     ctxt->dest_table = NULL;
@@ -19,6 +19,9 @@ void dnsctxt_init(struct dnsctxt *ctxt) {
     ctxt->query_name3_table = NULL;
     ctxt->nxdomain_table = NULL;
     ctxt->refused_table = NULL;
+
+    ctxt->local_net = local_net;
+    ctxt->local_bits = local_bits;
 
     ctxt->seen = 0;
     ctxt->incoming = 0;
@@ -147,13 +150,13 @@ void _print_table_str(struct str_entry *table) {
 
 void dnsctxt_table_summary(struct dnsctxt *ctxt) {
 
-    printf("\nSources IPs\n");
+    printf("\nIncoming Sources IPs\n");
     _print_table_ip(ctxt->source_table);
-    printf("\nSource Ports\n");
+    printf("\nIncoming Source Ports\n");
     _print_table_int(ctxt->src_port_table);
-    printf("\nDestinations IPs\n");
+    printf("\nOutgoing Destinations IPs\n");
     _print_table_ip(ctxt->dest_table);
-    printf("\nMalformed Query Source IPs\n");
+    printf("\nMalformed DNS Incoming Source IPs\n");
     _print_table_ip(ctxt->malformed_table);
     printf("\nQueried Names (2)\n");
     _print_table_str(ctxt->query_name2_table);

@@ -23,6 +23,9 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "ring_rx.h"
 #include "ring_tx.h"
@@ -57,8 +60,8 @@ enum dump_mode {
 };
 
 struct ctx {
-	char *device_in, *device_out, *device_trans, *filter, *prefix;
-    int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type;
+    char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net;
+    int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type, local_bits;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
     bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
@@ -71,7 +74,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBU";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBUL:W:";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
@@ -111,6 +114,8 @@ static const struct option long_options[] = {
     // these don't exist in netsniff-ng
     {"ui",          no_argument,        NULL, 'Y'},
     {"normal",		no_argument,		NULL, 'Z'},
+    {"local-net",		required_argument,		NULL, 'L'},
+    {"local-net-bits",		required_argument,		NULL, 'W'},
     {NULL, 0, NULL, 0}
 };
 
@@ -626,7 +631,7 @@ static void read_pcap(struct ctx *ctx)
 	drop_privileges(ctx->enforce, ctx->uid, ctx->gid);
 
     if (!ctx->ui) {
-        printf("Running! Hang up with ^C!\n\n");
+        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_bits);
         fflush(stdout);
     }
     else {
@@ -1016,7 +1021,7 @@ static void recv_only_or_dump(struct ctx *ctx)
 	}
 
     if (!ctx->ui) {
-        printf("Running! Hang up with ^C!\n\n");
+        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_bits);
         fflush(stdout);
     }
     else {
@@ -1147,7 +1152,8 @@ static void init_ctx(struct ctx *ctx)
 	ctx->uid = getgid();
 
 	ctx->cpu = -1;
-	ctx->packet_type = -1;
+    ctx->packet_type = -1;
+    ctx->local_bits = -1;
 
 	ctx->magic = ORIGINAL_TCPDUMP_MAGIC;
     ctx->print_mode = PRINT_NONE;
@@ -1161,8 +1167,6 @@ static void init_ctx(struct ctx *ctx)
     ctx->hwtimestamp = true;
     ctx->ui = false;
 
-    dnsctxt_init(&ctx->dns_ctxt);
-
 }
 
 static void destroy_ctx(struct ctx *ctx)
@@ -1172,6 +1176,8 @@ static void destroy_ctx(struct ctx *ctx)
 	free(ctx->device_trans);
 
     free(ctx->prefix);
+
+    free(ctx->local_net);
 
     dnsctxt_free(&ctx->dns_ctxt);
 }
@@ -1214,6 +1220,8 @@ static void __noreturn help(void)
 	     "  -U|--update                    Update GeoIP databases\n"
 	     "  -V|--verbose                   Be more verbose\n"
          "  -Y|--ui                        Use curses UI interface\n"
+         "  -L|--local-net                 Set local network address\n"
+         "  -W|--local-net-bits            Set local network length (default 32)\n"
          "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
@@ -1282,7 +1290,13 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			ctx.filter = xstrdup(optarg);
-			break;
+            break;
+        case 'L':
+            ctx.local_net = xstrdup(optarg);
+            break;
+        case 'W':
+            ctx.local_bits = strtoul(optarg, NULL, 0);
+            break;
 		case 'M':
 			ctx.promiscuous = false;
 			break;
@@ -1494,6 +1508,21 @@ int main(int argc, char **argv)
 	if (!ctx.device_in)
 		ctx.device_in = xstrdup("any");
 
+    if (!ctx.local_net) {
+        // XXX default should come from iface
+        panic("You must specify local_net\n");
+    }
+
+    if (ctx.local_bits == -1)
+        ctx.local_bits = 32;
+
+    struct in_addr ln;
+    if (inet_aton(ctx.local_net, &ln) == 0) {
+        panic("Invalid local_net");
+    }
+
+    dnsctxt_init(&ctx.dns_ctxt, ln.s_addr, ctx.local_bits);
+
 	register_signal(SIGINT, signal_handler);
 	register_signal(SIGQUIT, signal_handler);
 	register_signal(SIGTERM, signal_handler);
@@ -1507,8 +1536,7 @@ int main(int argc, char **argv)
 	}
 
 	if (device_mtu(ctx.device_in) || !strncmp("any", ctx.device_in, strlen(ctx.device_in))) {
-        //if (!ctx.rfraw)
-			ctx.link_type = pcap_devtype_to_linktype(ctx.device_in);
+        ctx.link_type = pcap_devtype_to_linktype(ctx.device_in);
 		if (!ctx.device_out) {
 			ctx.dump = 0;
 			main_loop = recv_only_or_dump;
@@ -1528,7 +1556,7 @@ int main(int argc, char **argv)
 			main_loop = pcap_to_xmit;
 			if (!ops_touched)
 				ctx.pcap = PCAP_OPS_MM;
-		} else {
+        } else {
 			main_loop = read_pcap;
 			if (!ops_touched)
 				ctx.pcap = PCAP_OPS_SG;

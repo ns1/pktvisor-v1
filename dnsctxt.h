@@ -16,7 +16,7 @@
 #define MAX_LRU_SIZE 10000
 
 // max summary table size
-#define MAX_SUMMARY_SIZE 10
+#define MAX_SUMMARY_SIZE 20
 
 // accumulator hash table keyed by ip address (in int form)
 // or other 32 bit key
@@ -63,6 +63,10 @@ struct dnsctxt {
     // REFUSED names
     struct str_entry *refused_table;
 
+    // local network so we can decide what is "incoming" vs "outgoing"
+    uint32_t local_net;
+    uint8_t local_bits;
+
     // general packet counters
     uint64_t seen;
     uint64_t incoming;
@@ -81,7 +85,7 @@ struct dnsctxt {
 
 };
 
-void dnsctxt_init(struct dnsctxt *ctxt);
+void dnsctxt_init(struct dnsctxt *ctxt, uint32_t local_net, uint8_t local_bits);
 void dnsctxt_free(struct dnsctxt *ctxt);
 void dnsctxt_table_summary(struct dnsctxt *ctxt);
 

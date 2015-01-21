@@ -55,7 +55,7 @@ static inline void __show_frame_hdr(uint8_t *packet, size_t len, int linktype,
 	char tmp[IFNAMSIZ];
 	union tpacket_uhdr hdr;
 	uint8_t pkttype = s_ll->sll_pkttype;
-	bool is_nl;
+    //bool is_nl;
 
 	if (mode == PRINT_NONE)
 		return;

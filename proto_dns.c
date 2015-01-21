@@ -18,45 +18,67 @@
 #include "dnsctxt.h"
 #include "dns.h"
 
+// max length of the packet that we parse as a DNS packet.
+// unless EDNS is in use, this should be 512. and even if EDNS is in
+// use, if it's a Query, it should still be < 512. if EDNS is in use
+// then technically a Reply may be larger than 512, but we don't care
+// much about the contents of the data in the replies
+// NOTE however that incoming traffic can sometimes be large Reply traffic
+// during DNS amplication attacks
+#define MAX_DNS_PKT_LEN 512
+
+bool cidr_match(uint32_t addr, uint32_t net, uint8_t bits) {
+  if (bits == 0) {
+    // C99 6.5.7 (3): u32 << 32 is undefined behaviour
+    return true;
+  }
+  return !((addr ^ net) & htonl(0xFFFFFFFFu << (32 - bits)));
+}
+
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
     int error;
     char qname[DNS_D_MAXNAME+1];
     struct dns_rr rr;
+    int incoming = 1;
 
-    struct dns_packet *dns_pkt = dns_p_new(512);
+    struct dns_packet *dns_pkt = dns_p_new(MAX_DNS_PKT_LEN);
     struct dns_rr_i *I = dns_rr_i_new(dns_pkt, .section = DNS_S_QUESTION);
     struct dnsctxt *dns_ctxt = (struct dnsctxt *)ctxt;
 
     // basic counts
     dns_ctxt->seen++;
 
-    if (pkt->pkttype == PACKET_HOST) {
+    // decide whether this is incoming or outgoing, based on our local network
+    incoming = cidr_match(*pkt->dest_addr, dns_ctxt->local_net, dns_ctxt->local_bits);
+
+    if (incoming) {
         // incoming packet
         dns_ctxt->incoming++;
     }
 
-    // sanity check total len
-    if (!len || len < sizeof(struct dns_header) || len > 512) {
+    // sanity check len is not 0 and is at least dns_header size
+    if (!len || len < sizeof(struct dns_header)) {
         dns_ctxt->cnt_malformed++;
+        if (incoming)
+            dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         return;
     }
 
     // XXX this isn't really "zero copy" then, since the way the dns lib is setup, we have to copy
     // the pkt data into the dns_packet buffer. but, it's on the stack at least. if we
     // rework the lib a bit, could use a (optional?) pointer instead of in structure buf
-    memcpy(dns_pkt->data, pkt->data, len);
-    dns_pkt->end = len;
+    // copy at most MAX_DNS_PK_LEN bytes
+    size_t dns_len = (len < MAX_DNS_PKT_LEN) ? len : MAX_DNS_PKT_LEN;
+    memcpy(dns_pkt->data, pkt->data, dns_len);
+    dns_pkt->end = dns_len;
 
     // table counters
 
-    // XXX if we can, limit source and udp src only to incoming (PACKET_HOST)
-    // and dest only to outgoing. problem is, this doesn't seem to be working
-    // for pcap dumps -- they all show up as PACKET_HOST
-
-    // source by ip
-    if (pkt->pkttype != PACKET_OUTGOING) {
+    // if this is an incoming packet...
+    if (incoming) {
+        // source by ip
         dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
         // incoming: store source udp port
         dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
@@ -66,6 +88,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
             dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         }
     }
+    // otherwise, outgoing packet...
     else {
         // store dest by ip
         dnsctxt_count_ip(&dns_ctxt->dest_table, *pkt->dest_addr);
@@ -78,30 +101,29 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     else {
         dns_ctxt->cnt_query++;
     }
-    // result code
-    switch (dns_header(dns_pkt)->rcode) {
-    case DNS_RC_NOERROR:
-        dns_ctxt->cnt_status_noerror++;
-        break;
-    case DNS_RC_NXDOMAIN:
-        dns_ctxt->cnt_status_nxdomain++;
-        break;
-    case DNS_RC_REFUSED:
-        dns_ctxt->cnt_status_refused++;
-        break;
-    case DNS_RC_SERVFAIL:
-        dns_ctxt->cnt_status_srvfail++;
-        break;
-    }
 
-    // XXX if we want to, we can branch here on incoming vs. outgong
-    // packets to not have to fully decode outgoing. however, we can't
-    // capture query names of NXDOMAIN, REFUSED, etc that way
+    // track result code outgoing for replies
+    if (!incoming && dns_header(dns_pkt)->qr == 1) {
+        switch (dns_header(dns_pkt)->rcode) {
+        case DNS_RC_NOERROR:
+            dns_ctxt->cnt_status_noerror++;
+            break;
+        case DNS_RC_NXDOMAIN:
+            dns_ctxt->cnt_status_nxdomain++;
+            break;
+        case DNS_RC_REFUSED:
+            dns_ctxt->cnt_status_refused++;
+            break;
+        case DNS_RC_SERVFAIL:
+            dns_ctxt->cnt_status_srvfail++;
+            break;
+        }
+    }
 
     // XXX detect malformed DNS packet here?
     if (dns_rr_grep(&rr, 1, I, dns_pkt, &error)) {
         if (!dns_d_expand((unsigned char *)qname, DNS_D_MAXNAME, rr.dn.p, dns_pkt, &error) && !error)
-            goto finalize;
+            goto skip_q_name;
     }
 
     // lowercase
@@ -120,21 +142,24 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     // zip to zone, or qname begin
     while (part > qname && *part != '.')
         part--;
-    // if not qname begin, start after .
-    if (part == qname) {
-        dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
-    }
-    else {
-        dnsctxt_count_name(&dns_ctxt->query_name2_table, part+1);
-        // may be go one more label length
-        part--;
-        while (part > qname && *part != '.')
+
+    if (dns_header(dns_pkt)->qr == 1) {
+        // if not qname begin, start after .
+        if (part == qname) {
+            dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
+        }
+        else {
+            dnsctxt_count_name(&dns_ctxt->query_name2_table, part+1);
+            // may be go one more label length
             part--;
-        if (part == qname)
-            dnsctxt_count_name(&dns_ctxt->query_name3_table, part);
-        else
-            // anything longer gets squished into this domain
-            dnsctxt_count_name(&dns_ctxt->query_name3_table, part+1);
+            while (part > qname && *part != '.')
+                part--;
+            if (part == qname)
+                dnsctxt_count_name(&dns_ctxt->query_name3_table, part);
+            else
+                // anything longer gets squished into this domain
+                dnsctxt_count_name(&dns_ctxt->query_name3_table, part+1);
+        }
     }
 
     // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
@@ -150,7 +175,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         }
     }
 
-finalize:
+skip_q_name:
     // XXX look for OPT, edns, client subnet
     return;
 
@@ -182,7 +207,7 @@ void print_dns_packet(struct dns_packet *P) {
 
         if (rr.section == DNS_S_QUESTION) {
             if (dns_d_expand((unsigned char *)qname, DNS_D_MAXNAME, rr.dn.p, P, &error) && !error)
-                tprintf(" [ DNS Question: %s ]\n", qname);
+                tprintf(" [ DNS Question: %s %s ]\n", qname, dns_strtype(rr.type));
         }
 
         section	= rr.section;
@@ -192,10 +217,10 @@ void print_dns_packet(struct dns_packet *P) {
 
 void print_dns(struct pkt_buff *pkt, void *ctxt)
 {
-    struct dns_packet *dns_pkt = dns_p_new(512);
+    struct dns_packet *dns_pkt = dns_p_new(2048);
     size_t len = pkt_len(pkt);
 
-    if (len > 512) {
+    if (len > 2048) {
         tprintf(" [ DNS Malformed (too big: %lu) ]\n", len);
         return;
     }
