@@ -1255,6 +1255,7 @@ int main(int argc, char **argv)
 	bool prio_high = false, setsockmem = true;
 	void (*main_loop)(struct ctx *ctx) = NULL;
     struct ctx ctx;
+    struct in_addr ln;
 
     init_ctx(&ctx);
 	srand(time(NULL));
@@ -1509,14 +1510,13 @@ int main(int argc, char **argv)
 		ctx.device_in = xstrdup("any");
 
     if (!ctx.local_net) {
-        // XXX default should come from iface
-        panic("You must specify local_net\n");
+        ctx.local_net = xstrdup("0.0.0.0");
+        ctx.local_bits = 0;
+    }
+    else if (ctx.local_bits == -1) {
+        ctx.local_bits = 32;
     }
 
-    if (ctx.local_bits == -1)
-        ctx.local_bits = 32;
-
-    struct in_addr ln;
     if (inet_aton(ctx.local_net, &ln) == 0) {
         panic("Invalid local_net");
     }

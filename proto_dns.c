@@ -143,7 +143,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     while (part > qname && *part != '.')
         part--;
 
-    if (dns_header(dns_pkt)->qr == 1) {
+    if (incoming) {
         // if not qname begin, start after .
         if (part == qname) {
             dnsctxt_count_name(&dns_ctxt->query_name2_table, part);
@@ -164,7 +164,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
 
     // if this was a query reply and it wasn't NOERROR, track NXDOMAIN
     // and REFUSED counts
-    if (dns_header(dns_pkt)->qr == 1 && dns_header(dns_pkt)->rcode != DNS_RC_NOERROR) {
+    if (!incoming && dns_header(dns_pkt)->qr == 1 && dns_header(dns_pkt)->rcode != DNS_RC_NOERROR) {
         switch (dns_header(dns_pkt)->rcode) {
         case DNS_RC_NXDOMAIN:
             dnsctxt_count_name(&dns_ctxt->nxdomain_table, qname);
