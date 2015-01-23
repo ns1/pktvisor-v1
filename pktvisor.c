@@ -61,7 +61,7 @@ enum dump_mode {
 
 struct ctx {
     char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net;
-    int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type, local_bits;
+    int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type, local_prefix;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
     bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
@@ -631,7 +631,7 @@ static void read_pcap(struct ctx *ctx)
 	drop_privileges(ctx->enforce, ctx->uid, ctx->gid);
 
     if (!ctx->ui) {
-        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_bits);
+        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_prefix);
         fflush(stdout);
     }
     else {
@@ -1021,7 +1021,7 @@ static void recv_only_or_dump(struct ctx *ctx)
 	}
 
     if (!ctx->ui) {
-        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_bits);
+        printf("Running! Local network: %s/%d. Hang up with ^C!\n\n", ctx->local_net, ctx->local_prefix);
         fflush(stdout);
     }
     else {
@@ -1153,7 +1153,7 @@ static void init_ctx(struct ctx *ctx)
 
 	ctx->cpu = -1;
     ctx->packet_type = -1;
-    ctx->local_bits = -1;
+    ctx->local_prefix = -1;
 
 	ctx->magic = ORIGINAL_TCPDUMP_MAGIC;
     ctx->print_mode = PRINT_NONE;
@@ -1296,7 +1296,7 @@ int main(int argc, char **argv)
             ctx.local_net = xstrdup(optarg);
             break;
         case 'W':
-            ctx.local_bits = strtoul(optarg, NULL, 0);
+            ctx.local_prefix = strtoul(optarg, NULL, 0);
             break;
 		case 'M':
 			ctx.promiscuous = false;
@@ -1510,18 +1510,26 @@ int main(int argc, char **argv)
 		ctx.device_in = xstrdup("any");
 
     if (!ctx.local_net) {
-        ctx.local_net = xstrdup("0.0.0.0");
-        ctx.local_bits = 0;
+        if (getenv("PKTVISOR_LOCAL_NET"))
+            ctx.local_net = xstrdup(getenv("PKTVISOR_LOCAL_NET"));
+        else {
+            ctx.local_net = xstrdup("0.0.0.0");
+            if (ctx.local_prefix == -1)
+                ctx.local_prefix = 0;
+        }
     }
-    else if (ctx.local_bits == -1) {
-        ctx.local_bits = 32;
+    if (ctx.local_prefix == -1) {
+        if (getenv("PKTVISOR_LOCAL_PREFIX"))
+            ctx.local_prefix = strtoul(getenv("PKTVISOR_LOCAL_PREFIX"), NULL, 0);
+        else
+            ctx.local_prefix = 32;
     }
 
     if (inet_aton(ctx.local_net, &ln) == 0) {
         panic("Invalid local_net");
     }
 
-    dnsctxt_init(&ctx.dns_ctxt, ln.s_addr, ctx.local_bits);
+    dnsctxt_init(&ctx.dns_ctxt, ln.s_addr, ctx.local_prefix);
 
 	register_signal(SIGINT, signal_handler);
 	register_signal(SIGQUIT, signal_handler);
