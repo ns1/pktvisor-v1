@@ -1,3 +1,9 @@
+pktvisor (0.6.1-r1-1) precise; urgency=low
+
+  * Remove ldns dependency. UI updates.
+
+ -- Shannon Weyrick <sweyrick@nsone.net>  Mon, 12 Jan 2015 13:12:03 -0500
+
 pktvisor (0.6.0-r1-1) precise; urgency=low
 
   * Initial release 
