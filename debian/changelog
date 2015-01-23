@@ -1,4 +1,4 @@
-pktvisor (0.6.1-r1-1) precise; urgency=low
+pktvisor (0.6.1-r2-1) precise; urgency=low
 
   * Remove ldns dependency. UI updates.
 
