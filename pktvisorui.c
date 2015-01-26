@@ -25,7 +25,7 @@ enum redraw_target {
     NXDOMAIN_TABLE,
     REFUSED_TABLE
 };
-int cur_target = QUERY3_TABLE;
+int cur_target = QUERY2_TABLE;
 
 void gotsignalrm(int sig) {
     do_redraw = 1;
@@ -130,7 +130,7 @@ void pktvisor_ui_init(int interval) {
     nodelay(w, 1);
     redraw_interval = interval;
 
-    cur_target = QUERY3_TABLE;
+    cur_target = QUERY2_TABLE;
     signal(SIGALRM, gotsignalrm);
     redraw_itv.it_interval.tv_sec = redraw_interval;
     redraw_itv.it_interval.tv_usec = 0;
@@ -141,11 +141,13 @@ void pktvisor_ui_init(int interval) {
 
 void redraw_header(struct dnsctxt *dns_ctxt) {
 
+    double outgoing = (double)dns_ctxt->seen - (double)dns_ctxt->incoming;
+
     // see HEADER_SIZE def
     mvprintw(0, 0, "total  : %6lu, incming: %6lu, outgoing: %6lu, malformed: %6lu (%0.2f%%), EDNS: %6lu (%0.2f%%)",
              dns_ctxt->seen,
              dns_ctxt->incoming,
-             dns_ctxt->seen - dns_ctxt->incoming,
+             (long)outgoing,
              dns_ctxt->cnt_malformed,
              ((double)dns_ctxt->cnt_malformed / (double)dns_ctxt->seen)*100,
              dns_ctxt->cnt_edns,
@@ -157,13 +159,13 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
 
     mvprintw(2, 0, "NOERROR: %6lu (%0.2f%%), SRVFAIL: %6lu (%0.2f%%), NXDOMAIN: %6lu (%0.2f%%), REFUSED: %6lu (%0.2f%%)",
              dns_ctxt->cnt_status_noerror,
-             ((double)dns_ctxt->cnt_status_noerror / (double)dns_ctxt->seen)*100,
+             ((double)dns_ctxt->cnt_status_noerror / outgoing)*100,
              dns_ctxt->cnt_status_srvfail,
-             ((double)dns_ctxt->cnt_status_srvfail / (double)dns_ctxt->seen)*100,
+             ((double)dns_ctxt->cnt_status_srvfail / outgoing)*100,
              dns_ctxt->cnt_status_nxdomain,
-             ((double)dns_ctxt->cnt_status_nxdomain / (double)dns_ctxt->seen)*100,
+             ((double)dns_ctxt->cnt_status_nxdomain / outgoing)*100,
              dns_ctxt->cnt_status_refused,
-             ((double)dns_ctxt->cnt_status_refused / (double)dns_ctxt->seen)*100);
+             ((double)dns_ctxt->cnt_status_refused / outgoing)*100);
 
 }
 

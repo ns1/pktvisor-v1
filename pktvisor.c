@@ -541,10 +541,13 @@ static void translate_pcap_to_txf(int fdo, uint8_t *out, size_t len)
 
 static void dns_summary(struct ctx *ctx)
 {
+
+    double outgoing = (double)ctx->dns_ctxt.seen - (double)ctx->dns_ctxt.incoming;
+
     printf("\nDNS Results:\n");
     printf("\r%12lu  seen\n", ctx->dns_ctxt.seen);
     printf("\r%12lu  incoming\n", ctx->dns_ctxt.incoming);
-    printf("\r%12lu  outgoing\n", ctx->dns_ctxt.seen - ctx->dns_ctxt.incoming);
+    printf("\r%12lu  outgoing\n", (long)outgoing);
     printf("\r%12lu  malformed (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_malformed,
            ((double)ctx->dns_ctxt.cnt_malformed / (double)ctx->dns_ctxt.seen)*100);
@@ -557,16 +560,16 @@ static void dns_summary(struct ctx *ctx)
 
     printf("\r%12lu  NOERROR (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_noerror,
-           ((double)ctx->dns_ctxt.cnt_status_noerror / (double)ctx->dns_ctxt.seen)*100);
+           ((double)ctx->dns_ctxt.cnt_status_noerror / outgoing)*100);
     printf("\r%12lu  SRVFAIL (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_srvfail,
-           ((double)ctx->dns_ctxt.cnt_status_srvfail / (double)ctx->dns_ctxt.seen)*100);
+           ((double)ctx->dns_ctxt.cnt_status_srvfail / outgoing)*100);
     printf("\r%12lu  NXDOMAIN (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_nxdomain,
-           ((double)ctx->dns_ctxt.cnt_status_nxdomain / (double)ctx->dns_ctxt.seen)*100);
+           ((double)ctx->dns_ctxt.cnt_status_nxdomain / outgoing)*100);
     printf("\r%12lu  REFUSED (%0.2f%%)\n",
            ctx->dns_ctxt.cnt_status_refused,
-           ((double)ctx->dns_ctxt.cnt_status_refused / (double)ctx->dns_ctxt.seen)*100);
+           ((double)ctx->dns_ctxt.cnt_status_refused / outgoing)*100);
 
     dnsctxt_table_summary(&ctx->dns_ctxt);
 
