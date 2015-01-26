@@ -115,7 +115,7 @@ static const struct option long_options[] = {
     {"ui",          no_argument,        NULL, 'Y'},
     {"normal",		no_argument,		NULL, 'Z'},
     {"local-net",		required_argument,		NULL, 'L'},
-    {"local-net-bits",		required_argument,		NULL, 'W'},
+    {"local-net-prefix",		required_argument,		NULL, 'W'},
     {NULL, 0, NULL, 0}
 };
 
@@ -1221,7 +1221,7 @@ static void __noreturn help(void)
 	     "  -V|--verbose                   Be more verbose\n"
          "  -Y|--ui                        Use curses UI interface\n"
          "  -L|--local-net                 Set local network address\n"
-         "  -W|--local-net-bits            Set local network length (default 32)\n"
+         "  -W|--local-net-prefix          Set local network prefix length (default 32)\n"
          "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
