@@ -19,6 +19,8 @@ void dnsctxt_init(struct dnsctxt *ctxt, uint32_t local_net, uint8_t local_bits) 
     ctxt->query_name3_table = NULL;
     ctxt->nxdomain_table = NULL;
     ctxt->refused_table = NULL;
+    ctxt->geo_asn_table = NULL;
+    ctxt->geo_loc_table = NULL;
 
     ctxt->local_net = local_net;
     ctxt->local_bits = local_bits;
@@ -74,6 +76,14 @@ void dnsctxt_free(struct dnsctxt *ctxt) {
     }
     HASH_ITER(hh, ctxt->refused_table, sentry, tmp_sentry) {
         HASH_DELETE(hh, ctxt->refused_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->geo_asn_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->geo_asn_table, sentry);
+        free(sentry);
+    }
+    HASH_ITER(hh, ctxt->geo_loc_table, sentry, tmp_sentry) {
+        HASH_DELETE(hh, ctxt->geo_loc_table, sentry);
         free(sentry);
     }
 }
@@ -166,6 +176,10 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
     _print_table_str(ctxt->nxdomain_table);
     printf("\nREFUSED Names\n");
     _print_table_str(ctxt->refused_table);
+    printf("\nGEO ASN\n");
+    _print_table_str(ctxt->geo_asn_table);
+    printf("\nGEO Location\n");
+    _print_table_str(ctxt->geo_loc_table);
 
 }
 

@@ -60,13 +60,13 @@ enum dump_mode {
 };
 
 struct ctx {
-    char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net;
+    char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net, *geoip_city, *geoip_asn;
     int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type, local_prefix;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
     bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
          ui;
-	enum pcap_ops_groups pcap; enum dump_mode dump_mode;
+    enum pcap_ops_groups pcap; enum dump_mode dump_mode;
     uid_t uid; gid_t gid; uint32_t link_type, magic;
     struct dnsctxt dns_ctxt;
 };
@@ -74,7 +74,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBUL:W:";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBUL:W:C:a:";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
@@ -107,7 +107,6 @@ static const struct option long_options[] = {
 	{"hex",			no_argument,		NULL, 'X'},
 	{"ascii",		no_argument,		NULL, 'l'},
 	{"no-sock-mem",		no_argument,		NULL, 'A'},
-	{"update",		no_argument,		NULL, 'U'},
 	{"verbose",		no_argument,		NULL, 'V'},
 	{"version",		no_argument,		NULL, 'v'},
     {"help",		no_argument,		NULL, 'h'},
@@ -116,6 +115,8 @@ static const struct option long_options[] = {
     {"normal",		no_argument,		NULL, 'Z'},
     {"local-net",		required_argument,		NULL, 'L'},
     {"local-net-prefix",		required_argument,		NULL, 'W'},
+    {"geoip-city",		required_argument,		NULL, 'C'},
+    {"geoip-asn",		required_argument,		NULL, 'a'},
     {NULL, 0, NULL, 0}
 };
 
@@ -1220,11 +1221,12 @@ static void __noreturn help(void)
          "  -q|--less                      Print less-verbose packet information\n"
 	     "  -X|--hex                       Print packet data in hex format\n"
 	     "  -l|--ascii                     Print human-readable packet data\n"
-	     "  -U|--update                    Update GeoIP databases\n"
 	     "  -V|--verbose                   Be more verbose\n"
          "  -Y|--ui                        Use curses UI interface\n"
          "  -L|--local-net                 Set local network address\n"
          "  -W|--local-net-prefix          Set local network prefix length (default 32)\n"
+         "  -C|--geoip-city                Location of GeoIP City database\n"
+         "  -a|--geoip-asn                 Location of GeoIP ASN database\n"
          "  -v|--version                   Show version and exit\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
@@ -1267,7 +1269,13 @@ int main(int argc, char **argv)
 				&opt_index)) != EOF) {
 		switch (c) {
 		case 'd':
-		case 'i':
+        case 'C':
+            ctx.geoip_city = xstrdup(optarg);
+            break;
+        case 'a':
+            ctx.geoip_asn = xstrdup(optarg);
+            break;
+        case 'i':
 			ctx.device_in = xstrdup(optarg);
 			break;
 		case 'o':
@@ -1448,11 +1456,7 @@ int main(int argc, char **argv)
 		case 'D':
 			pcap_dump_type_features();
 			die();
-			break;
-		case 'U':
-			update_geoip();
-			die();
-			break;
+            break;
 		case 'v':
 			version();
 			break;
@@ -1576,7 +1580,7 @@ int main(int argc, char **argv)
 
 	bug_on(!main_loop);
 
-	init_geoip(0);
+    init_geoip(ctx.geoip_city, ctx.geoip_asn);
 	if (setsockmem)
 		set_system_socket_memory(vals, array_size(vals));
 	if (!ctx.enforce)

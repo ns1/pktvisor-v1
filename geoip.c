@@ -270,6 +270,13 @@ static GeoIPRecord *geoip6_get_record(struct sockaddr_in6 *sa)
 	return GeoIP_record_by_ipnum_v6(gi6_city, sa->sin6_addr) ? : &empty;
 }
 
+const char *geoip4_as_name_by_ip(uint32_t ip)
+{
+    bug_on(gi4_asname == NULL);
+
+    return GeoIP_name_by_ipnum(gi4_asname, ntohl(ip));
+}
+
 const char *geoip4_as_name(struct sockaddr_in *sa)
 {
 	bug_on(gi4_asname == NULL);
@@ -388,17 +395,16 @@ static GeoIP *geoip_open(const char *filename, int flags)
 	return ret;
 }
 
-static void init_geoip_city_open4(int enforce)
+static void init_geoip_city_open4(const char* db)
 {
-	gi4_city = geoip_open(files[GEOIP_CITY_EDITION_REV1].local, GEOIP_MMAP_CACHE);
+    gi4_city = geoip_open(db, GEOIP_MMAP_CACHE);
 	if (gi4_city == NULL) {
 		gi4_city = geoip_open_type(GEOIP_CITY_EDITION_REV1, GEOIP_MMAP_CACHE);
 		if (gi4_city == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP4 city database, try --update!\n");
+            panic("Cannot open GeoIP4 city database\n");
 	}
 
-	if (gi4_city) {
+    if (gi4_city) {
 		GeoIP_set_charset(gi4_city, GEOIP_CHARSET_UTF8);
 		geoip_db_present |= CITYV4;
 	}
@@ -420,10 +426,10 @@ static void init_geoip_city_open6(int enforce)
 	}
 }
 
-static void init_geoip_city(int enforce)
+static void init_geoip_city(const char* db)
 {
-	init_geoip_city_open4(enforce);
-	init_geoip_city_open6(enforce);
+    init_geoip_city_open4(db);
+    //init_geoip_city_open6(enforce);
 }
 
 static void destroy_geoip_city(void)
@@ -476,14 +482,13 @@ static void destroy_geoip_country(void)
 	GeoIP_delete(gi6_country);
 }
 
-static void init_geoip_asname_open4(int enforce)
+static void init_geoip_asname_open4(const char* db)
 {
-	gi4_asname = geoip_open(files[GEOIP_ASNUM_EDITION].local, GEOIP_MMAP_CACHE);
+    gi4_asname = geoip_open(db, GEOIP_MMAP_CACHE);
 	if (gi4_asname == NULL) {
 		gi4_asname = geoip_open_type(GEOIP_ASNUM_EDITION, GEOIP_MMAP_CACHE);
 		if (gi4_asname == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP4 AS database, try --update!\n");
+            panic("Cannot open GeoIP4 AS database\n");
 	}
 
 	if (gi4_asname) {
@@ -508,10 +513,10 @@ static void init_geoip_asname_open6(int enforce)
 	}
 }
 
-static void init_geoip_asname(int enforce)
+static void init_geoip_asname(const char* db)
 {
-	init_geoip_asname_open4(enforce);
-	init_geoip_asname_open6(enforce);
+    init_geoip_asname_open4(db);
+    //init_geoip_asname_open6(enforce);
 }
 
 static void destroy_geoip_asname(void)
@@ -556,11 +561,12 @@ static void destroy_mirrors(void)
 		free(servers[i]);
 }
 
-void init_geoip(int enforce)
+void init_geoip(const char *citydb, const char *asndb)
 {
-	init_geoip_city(enforce);
-	init_geoip_country(enforce);
-	init_geoip_asname(enforce);
+    if (citydb)
+        init_geoip_city(citydb);
+    if (asndb)
+        init_geoip_asname(asndb);
 }
 
 void update_geoip(void)

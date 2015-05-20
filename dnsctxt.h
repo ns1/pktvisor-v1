@@ -63,6 +63,10 @@ struct dnsctxt {
     // REFUSED names
     struct str_entry *refused_table;
 
+    // GEO
+    struct str_entry *geo_asn_table;
+    struct str_entry *geo_loc_table;
+
     // local network so we can decide what is "incoming" vs "outgoing"
     uint32_t local_net;
     uint8_t local_bits;

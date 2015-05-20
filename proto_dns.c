@@ -17,6 +17,7 @@
 #include "pkt_buff.h"
 #include "dnsctxt.h"
 #include "dns.h"
+#include "geoip.h"
 
 // max length of the packet that we parse as a DNS packet.
 // unless EDNS is in use, this should be 512. and even if EDNS is in
@@ -42,6 +43,7 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     char qname[DNS_D_MAXNAME+1];
     struct dns_rr rr;
     int incoming = 1;
+    const char* geo = 0;
 
     struct dns_packet *dns_pkt = dns_p_new(MAX_DNS_PKT_LEN);
     struct dns_rr_i *I = dns_rr_i_new(dns_pkt, .section = DNS_S_QUESTION);
@@ -87,6 +89,10 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
             dns_ctxt->cnt_malformed++;
             dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         }
+        // if we have geoip asn, count by asn
+        geo = geoip4_as_name_by_ip(*pkt->src_addr);
+        if (geo)
+            dnsctxt_count_name(&dns_ctxt->geo_asn_table, geo);
     }
     // otherwise, outgoing packet...
     else {
