@@ -23,7 +23,9 @@ enum redraw_target {
     QUERY2_TABLE,
     QUERY3_TABLE,
     NXDOMAIN_TABLE,
-    REFUSED_TABLE
+    REFUSED_TABLE,
+    GEO_LOC_TABLE,
+    GEO_ASN_TABLE
 };
 int cur_target = QUERY2_TABLE;
 
@@ -108,12 +110,17 @@ void redraw_table_str(struct str_entry *table, char *txt_hdr) {
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
     HASH_ITER(hh, table, entry, tmp_entry) {
-        if (strlen(entry->key) > max_len)
-            max_len = strlen(entry->key);
         HASH_ADD(hh_srt, sorted_table, key, MAX_DNAME_LEN, entry);
     }
 
     HASH_SRT(hh_srt, sorted_table, sort_str_by_count);
+    HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
+        if (strlen(entry->key) > max_len)
+            max_len = strlen(entry->key);
+        if (++i > getmaxy(w) - 10)
+            break;
+    }
+    i = 0;
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
         printw("%-*s %lu\n", max_len, strlen(entry->key) ? entry->key : ".", entry->count);
         if (++i > getmaxy(w) - 10)
@@ -153,7 +160,7 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
              dns_ctxt->cnt_edns,
              ((double)dns_ctxt->cnt_edns / (double)dns_ctxt->seen)*100);
 
-    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=query2, 2=query3, 3=src, 4=dest, 5=mal, 6=nx, 7=refused, 8=ports",
+    mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=q2, 2=q3, 3=src, 4=dst, 5=mal, 6=nx, 7=ref, 8=ports, 9=geo, 0=asn",
              dns_ctxt->cnt_query,
              dns_ctxt->cnt_reply);
 
@@ -193,6 +200,12 @@ void redraw(struct dnsctxt *dns_ctxt) {
         break;
     case SRC_PORT_TABLE:
         redraw_table_int(dns_ctxt->src_port_table, "Top Source Ports");
+        break;
+    case GEO_LOC_TABLE:
+        redraw_table_str(dns_ctxt->geo_loc_table, "By Incoming GeoLocation");
+        break;
+    case GEO_ASN_TABLE:
+        redraw_table_str(dns_ctxt->geo_asn_table, "By Incoming ASN");
         break;
     case QUERY2_TABLE:
         redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)");
@@ -247,6 +260,14 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     case '7':
     case 'r':
         cur_target = REFUSED_TABLE;
+        break;
+    case '9':
+    case 'l':
+        cur_target = GEO_LOC_TABLE;
+        break;
+    case '0':
+    case 'a':
+        cur_target = GEO_ASN_TABLE;
         break;
     case '8':
     case 'p':
