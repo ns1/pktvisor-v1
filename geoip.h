@@ -24,6 +24,7 @@ extern float geoip6_latitude(struct sockaddr_in6 *sa);
 extern const char *geoip4_as_name(struct sockaddr_in *sa);
 extern const char *geoip6_as_name(struct sockaddr_in6 *sa);
 extern const char *geoip4_as_name_by_ip(uint32_t ip);
+extern char *geoip4_loc_by_ip(uint32_t ip);
 extern void destroy_geoip(void);
 #else
 static inline void init_geoip(int enforce)

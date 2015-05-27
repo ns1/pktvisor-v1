@@ -89,10 +89,21 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
             dns_ctxt->cnt_malformed++;
             dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         }
-        // if we have geoip asn, count by asn
-        geo = geoip4_as_name_by_ip(*pkt->src_addr);
-        if (geo)
-            dnsctxt_count_name(&dns_ctxt->geo_asn_table, geo);
+        // if we have it, count by geo
+        if (dns_ctxt->have_geo_loc) {
+            geo = geoip4_loc_by_ip(*pkt->src_addr);
+            if (geo) {
+                dnsctxt_count_name(&dns_ctxt->geo_loc_table, geo);
+                free(geo);
+            }
+        }
+        if (dns_ctxt->have_geo_asn) {
+            geo = geoip4_as_name_by_ip(*pkt->src_addr);
+            if (geo) {
+                dnsctxt_count_name(&dns_ctxt->geo_asn_table, geo);
+                free(geo);
+            }
+        }
     }
     // otherwise, outgoing packet...
     else {

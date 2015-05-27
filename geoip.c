@@ -29,6 +29,8 @@ struct file {
 	const char *remote, *possible_prefix;
 };
 
+#define LOC_BUF_LEN 80
+
 #define PRE	"/download/geoip/database"
 static const struct file files[] = {
 	[GEOIP_CITY_EDITION_REV1] = {
@@ -343,6 +345,21 @@ const char *geoip6_country_name(struct sockaddr_in6 *sa)
 	bug_on(gi6_country == NULL);
 
 	return GeoIP_country_name_by_ipnum_v6(gi6_country, sa->sin6_addr);
+}
+
+char *geoip4_loc_by_ip(uint32_t ip)
+{
+    bug_on(gi4_city == NULL);
+
+    GeoIPRecord* entry = GeoIP_record_by_ipnum(gi4_city, ntohl(ip)) ? : &empty;
+
+    char *buf = malloc(LOC_BUF_LEN);
+    snprintf(buf, LOC_BUF_LEN, "%s/%s",
+        (entry->country_code ? entry->country_code : "Unknown"),
+        (entry->region ? entry->region : "Unknown"));
+
+    return buf;
+
 }
 
 static int fdout, fderr;

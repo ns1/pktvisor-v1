@@ -60,7 +60,7 @@ enum dump_mode {
 };
 
 struct ctx {
-    char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net, *geoip_city, *geoip_asn;
+    char *device_in, *device_out, *device_trans, *filter, *prefix, *local_net, *geoip_loc, *geoip_asn;
     int cpu, /*rfraw,*/ dump, print_mode, dump_dir, packet_type, local_prefix;
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
@@ -1270,7 +1270,7 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'd':
         case 'C':
-            ctx.geoip_city = xstrdup(optarg);
+            ctx.geoip_loc = xstrdup(optarg);
             break;
         case 'a':
             ctx.geoip_asn = xstrdup(optarg);
@@ -1537,6 +1537,10 @@ int main(int argc, char **argv)
     }
 
     dnsctxt_init(&ctx.dns_ctxt, ln.s_addr, ctx.local_prefix);
+    if (ctx.geoip_asn)
+        ctx.dns_ctxt.have_geo_asn = 1;
+    if (ctx.geoip_loc)
+        ctx.dns_ctxt.have_geo_loc = 1;
 
 	register_signal(SIGINT, signal_handler);
 	register_signal(SIGQUIT, signal_handler);
@@ -1580,7 +1584,7 @@ int main(int argc, char **argv)
 
 	bug_on(!main_loop);
 
-    init_geoip(ctx.geoip_city, ctx.geoip_asn);
+    init_geoip(ctx.geoip_loc, ctx.geoip_asn);
 	if (setsockmem)
 		set_system_socket_memory(vals, array_size(vals));
 	if (!ctx.enforce)

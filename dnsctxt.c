@@ -22,6 +22,9 @@ void dnsctxt_init(struct dnsctxt *ctxt, uint32_t local_net, uint8_t local_bits) 
     ctxt->geo_asn_table = NULL;
     ctxt->geo_loc_table = NULL;
 
+    ctxt->have_geo_asn = 0;
+    ctxt->have_geo_loc = 0;
+
     ctxt->local_net = local_net;
     ctxt->local_bits = local_bits;
 

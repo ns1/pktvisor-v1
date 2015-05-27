@@ -64,6 +64,8 @@ struct dnsctxt {
     struct str_entry *refused_table;
 
     // GEO
+    int have_geo_asn;
+    int have_geo_loc;
     struct str_entry *geo_asn_table;
     struct str_entry *geo_loc_table;
 
