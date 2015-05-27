@@ -1,3 +1,9 @@
+pktvisor (0.7.0-r1-1) precise; urgency=low
+
+  * Add Geo Location and ASN lookup. UI bugfixes.
+
+ -- Shannon Weyrick <sweyrick@nsone.net>  Wed, 27 May 2015 13:12:03 -0500
+
 pktvisor (0.6.1-r2-1) precise; urgency=low
 
   * Remove ldns dependency. UI updates.
