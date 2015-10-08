@@ -25,25 +25,33 @@ enum redraw_target {
     NXDOMAIN_TABLE,
     REFUSED_TABLE,
     GEO_LOC_TABLE,
-    GEO_ASN_TABLE
+    GEO_ASN_TABLE,
+    SUMMARY_TABLE
 };
-int cur_target = QUERY2_TABLE;
+int cur_target = SUMMARY_TABLE;
+
+#define START_COL 0
+#define START_ROW 4
+#define FULL 0
 
 void gotsignalrm(int sig) {
     do_redraw = 1;
     signal(sig, gotsignalrm);
 }
 
-void redraw_table_int(struct int32_entry *table, char *txt_hdr) {
+void redraw_table_int(struct int32_entry *table, char *txt_hdr, int row, int col, int max) {
     struct int32_entry *entry, *tmp_entry, *sorted_table;
     unsigned int i = 0;
 
-    mvprintw(4, 0, "%s\n\n", txt_hdr);
+    mvprintw(row, col, "%s", txt_hdr);
 
     if (!table) {
-        printw("(no data)");
+        mvprintw(++row, col, "(no data)");
         return;
     }
+
+    if (max <= 0)
+        max = getmaxy(w) - 10;
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -53,25 +61,28 @@ void redraw_table_int(struct int32_entry *table, char *txt_hdr) {
 
     HASH_SRT(hh_srt, sorted_table, sort_int_by_count);
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        printw("%6u %lu\n", entry->key, entry->count);
-        if (++i > getmaxy(w) - 10)
+        mvprintw(++row, col, "%6u %lu", entry->key, entry->count);
+        if (++i >= max)
             break;
     }
     HASH_CLEAR(hh_srt, sorted_table);
 
 }
 
-void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
+void redraw_table_ip(struct int32_entry *table, char *txt_hdr, int row, int col, int max) {
     struct int32_entry *entry, *tmp_entry, *sorted_table;
     char ip[INET_ADDRSTRLEN];
     unsigned int i = 0;
 
-    mvprintw(4, 0, "%s\n\n", txt_hdr);
+    mvprintw(row, col, "%s", txt_hdr);
 
     if (!table) {
-        printw("(no data)");
+        mvprintw(row, col, "(no data)");
         return;
     }
+
+    if (max <= 0)
+        max = getmaxy(w) - 10;
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -88,24 +99,27 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr) {
         // XXX lookup in reverse table the ip address
         // XXX indicate if the reverse is in progress, or none exists, or show reverse name
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
-        printw("%16s %lu\n", ip, entry->count);
-        if (++i > getmaxy(w) - 10)
+        mvprintw(++row, col, "%16s %lu", ip, entry->count);
+        if (++i >= max)
             break;
     }
     HASH_CLEAR(hh_srt, sorted_table);
 
 }
 
-void redraw_table_str(struct str_entry *table, char *txt_hdr) {
+void redraw_table_str(struct str_entry *table, char *txt_hdr, int row, int col, int max) {
     struct str_entry *entry, *tmp_entry, *sorted_table;
     unsigned int i = 0;
     int max_len = 0;
 
-    mvprintw(4, 0, "%s\n\n", txt_hdr);
+    mvprintw(row, col, "%s", txt_hdr);
     if (!table) {
-        printw("(no data)");
+        mvprintw(++row, col, "(no data)");
         return;
     }
+
+    if (max <= 0)
+        max = getmaxy(w) - 10;
 
     // copy the table so we can sort it non destructively
     sorted_table = NULL;
@@ -117,13 +131,13 @@ void redraw_table_str(struct str_entry *table, char *txt_hdr) {
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
         if (strlen(entry->key) > max_len)
             max_len = strlen(entry->key);
-        if (++i > getmaxy(w) - 10)
+        if (++i >= max)
             break;
     }
     i = 0;
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        printw("%-*s %lu\n", max_len, strlen(entry->key) ? entry->key : ".", entry->count);
-        if (++i > getmaxy(w) - 10)
+        mvprintw(++row, col, "%-*s %lu", max_len, strlen(entry->key) ? entry->key : ".", entry->count);
+        if (++i >= max)
             break;
     }
     HASH_CLEAR(hh_srt, sorted_table);
@@ -137,7 +151,7 @@ void pktvisor_ui_init(int interval) {
     nodelay(w, 1);
     redraw_interval = interval;
 
-    cur_target = QUERY2_TABLE;
+    cur_target = SUMMARY_TABLE;
     signal(SIGALRM, gotsignalrm);
     redraw_itv.it_interval.tv_sec = redraw_interval;
     redraw_itv.it_interval.tv_usec = 0;
@@ -176,6 +190,21 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
 
 }
 
+void redraw_summary(struct dnsctxt *dns_ctxt) {
+
+    redraw_table_ip(dns_ctxt->source_table, "Top Source IPs", START_ROW, START_COL, 5);
+    redraw_table_str(dns_ctxt->nxdomain_table, "NXDOMAIN Names", START_ROW, START_COL+27, 5);
+    redraw_table_str(dns_ctxt->refused_table, "Refused Names", START_ROW, START_COL+65, 5);
+
+    redraw_table_int(dns_ctxt->src_port_table, "Top Source Ports", START_ROW+7, START_COL, 5);
+    redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)", START_ROW+7, START_COL+27, 5);
+    redraw_table_str(dns_ctxt->query_name3_table, "Top Queries (3)", START_ROW+7, START_COL+65, 5);
+
+    redraw_table_str(dns_ctxt->geo_loc_table, "By GeoLocation", START_ROW+14, START_COL, 5);
+    redraw_table_str(dns_ctxt->geo_asn_table, "By ASN", START_ROW+14, START_COL+40, 5);
+
+}
+
 void redraw(struct dnsctxt *dns_ctxt) {
 
     clear();
@@ -183,36 +212,39 @@ void redraw(struct dnsctxt *dns_ctxt) {
     redraw_header(dns_ctxt);
 
     switch (cur_target) {
+    case SUMMARY_TABLE:
+        redraw_summary(dns_ctxt);
+        break;
     case SOURCE_TABLE:
-        redraw_table_ip(dns_ctxt->source_table, "Top Source IPs");
+        redraw_table_ip(dns_ctxt->source_table, "Top Source IPs", START_ROW, START_COL, FULL);
         break;
     case DEST_TABLE:
-        redraw_table_ip(dns_ctxt->dest_table, "Top Destination IPs");
+        redraw_table_ip(dns_ctxt->dest_table, "Top Destination IPs", START_ROW, START_COL, FULL);
         break;
     case MALFORMED_TABLE:
-        redraw_table_ip(dns_ctxt->malformed_table, "Malformed Query Source IPs");
+        redraw_table_ip(dns_ctxt->malformed_table, "Malformed Query Source IPs", START_ROW, START_COL, FULL);
         break;
     case NXDOMAIN_TABLE:
-        redraw_table_str(dns_ctxt->nxdomain_table, "NXDOMAIN Names");
+        redraw_table_str(dns_ctxt->nxdomain_table, "NXDOMAIN Names", START_ROW, START_COL, FULL);
         break;
     case REFUSED_TABLE:
-        redraw_table_str(dns_ctxt->refused_table, "Refused Names");
+        redraw_table_str(dns_ctxt->refused_table, "Refused Names", START_ROW, START_COL, FULL);
         break;
     case SRC_PORT_TABLE:
-        redraw_table_int(dns_ctxt->src_port_table, "Top Source Ports");
+        redraw_table_int(dns_ctxt->src_port_table, "Top Source Ports", START_ROW, START_COL, FULL);
         break;
     case GEO_LOC_TABLE:
-        redraw_table_str(dns_ctxt->geo_loc_table, "By Incoming GeoLocation");
+        redraw_table_str(dns_ctxt->geo_loc_table, "By Incoming GeoLocation", START_ROW, START_COL, FULL);
         break;
     case GEO_ASN_TABLE:
-        redraw_table_str(dns_ctxt->geo_asn_table, "By Incoming ASN");
+        redraw_table_str(dns_ctxt->geo_asn_table, "By Incoming ASN", START_ROW, START_COL, FULL);
         break;
     case QUERY2_TABLE:
-        redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)");
+        redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)", START_ROW, START_COL, FULL);
         break;
     case QUERY3_TABLE:
     default:
-        redraw_table_str(dns_ctxt->query_name3_table, "Top Queries (3)");
+        redraw_table_str(dns_ctxt->query_name3_table, "Top Queries (3)", START_ROW, START_COL, FULL);
         break;
     }
 
@@ -233,44 +265,37 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     if (ch >= 'A' && ch <= 'Z')
         ch += 'a' - 'A';
     switch (ch) {
+    case 's':
+        cur_target = SUMMARY_TABLE;
+        break;
     case '1':
-    case 'q':
         cur_target = QUERY2_TABLE;
         break;
     case '2':
-    case 's':
         cur_target = QUERY3_TABLE;
         break;
     case '3':
-    case 'd':
         cur_target = SOURCE_TABLE;
         break;
     case '4':
-    case 'm':
         cur_target = DEST_TABLE;
         break;
     case '5':
-    case 'w':
         cur_target = MALFORMED_TABLE;
         break;
     case '6':
-    case 'n':
         cur_target = NXDOMAIN_TABLE;
         break;
     case '7':
-    case 'r':
         cur_target = REFUSED_TABLE;
         break;
     case '9':
-    case 'l':
         cur_target = GEO_LOC_TABLE;
         break;
     case '0':
-    case 'a':
         cur_target = GEO_ASN_TABLE;
         break;
     case '8':
-    case 'p':
         cur_target = SRC_PORT_TABLE;
         break;
     default:
