@@ -11,6 +11,10 @@
 
 #include "pktvisorui.h"
 
+#define START_COL 0
+#define START_ROW 5
+#define FULL 0
+
 WINDOW *w;
 int redraw_interval;
 bool do_redraw = true;
@@ -30,9 +34,9 @@ enum redraw_target {
 };
 int cur_target = SUMMARY_TABLE;
 
-#define START_COL 0
-#define START_ROW 4
-#define FULL 0
+// rate computations
+uint64_t last_incoming, last_query, last_reply;
+struct timeval last_rate_ts;
 
 void gotsignalrm(int sig) {
     do_redraw = 1;
@@ -90,14 +94,9 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr, int row, int col,
         HASH_ADD(hh_srt, sorted_table, key, sizeof(uint32_t), entry);
     }
 
-    // XXX figure out how many we'll actually be showing
-    // XXX check on progress of reverse DNS for each, or kick off new request if it's not started
-    // XXX copy reverse name into reverse hash if it's available, and indicate no reverse if necessary
 
     HASH_SRT(hh_srt, sorted_table, sort_int_by_count);
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        // XXX lookup in reverse table the ip address
-        // XXX indicate if the reverse is in progress, or none exists, or show reverse name
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
         mvprintw(++row, col, "%16s %lu", ip, entry->count);
         if (++i >= max)
@@ -151,6 +150,10 @@ void pktvisor_ui_init(int interval) {
     nodelay(w, 1);
     redraw_interval = interval;
 
+    last_incoming = last_query = last_reply = 0;
+    last_rate_ts.tv_sec = 0;
+    last_rate_ts.tv_usec = 0;
+
     cur_target = SUMMARY_TABLE;
     signal(SIGALRM, gotsignalrm);
     redraw_itv.it_interval.tv_sec = redraw_interval;
@@ -163,6 +166,11 @@ void pktvisor_ui_init(int interval) {
 void redraw_header(struct dnsctxt *dns_ctxt) {
 
     double outgoing = (double)dns_ctxt->seen - (double)dns_ctxt->incoming;
+
+    // rates
+    uint64_t incoming_pps = 0, query_pps = 0, reply_pps = 0;
+    struct timeval time_now;
+    double t_delta = 0;
 
     // see HEADER_SIZE def
     mvprintw(0, 0, "total  : %6lu, incming: %6lu, outgoing: %6lu, malformed: %6lu (%0.2f%%), EDNS: %6lu (%0.2f%%)",
@@ -187,6 +195,27 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
              ((double)dns_ctxt->cnt_status_nxdomain / outgoing)*100,
              dns_ctxt->cnt_status_refused,
              ((double)dns_ctxt->cnt_status_refused / outgoing)*100);
+
+    // calculate rates
+    gettimeofday(&time_now, NULL);
+    if (last_incoming > 0 && last_rate_ts.tv_sec > 0) {
+        t_delta = ((double)time_now.tv_sec+(double)time_now.tv_usec/1000000) -
+                         ((double)last_rate_ts.tv_sec+(double)last_rate_ts.tv_usec/1000000);
+        incoming_pps = (uint64_t)((double)last_incoming / t_delta);
+        query_pps = (uint64_t)((double)last_query / t_delta);
+        reply_pps = (uint64_t)((double)last_reply / t_delta);
+    }
+    last_rate_ts.tv_sec = time_now.tv_sec;
+    last_rate_ts.tv_usec = time_now.tv_usec;
+    last_incoming = dns_ctxt->incoming;
+    last_query = dns_ctxt->cnt_query;
+    last_reply = dns_ctxt->cnt_reply;
+
+    mvprintw(3, 0, "RATES  : incoming %lu | query %lu | reply %lu | pkts per %0.2fs",
+             incoming_pps,
+             query_pps,
+             reply_pps,
+             t_delta);
 
 }
 
