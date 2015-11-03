@@ -1,4 +1,10 @@
 
 This project is a fork of netsniff-ng, available at http://netsniff-ng.org/
 
-It has some specialized functionality... more useful information coming soon.
+It adds a DNS protocol analyzer, which can generate various statistics about real
+time traffic streams. It's intended use is to be run on authoritative DNS servers
+to diagnose incoming and outgoing DNS traffic.
+
+Like netsniff-ng, it can capture to a pcap. It also includes an ncurses based UI
+that provides a top-like interface to live DNS traffic statistics, including traffic
+by source/destination IP, DNS query label, result codes, source ports, Geo and ASN.
