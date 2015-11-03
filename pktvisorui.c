@@ -81,7 +81,7 @@ void redraw_table_ip(struct int32_entry *table, char *txt_hdr, int row, int col,
     mvprintw(row, col, "%s", txt_hdr);
 
     if (!table) {
-        mvprintw(row, col, "(no data)");
+        mvprintw(++row, col, "(no data)");
         return;
     }
 
