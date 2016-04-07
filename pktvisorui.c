@@ -30,7 +30,8 @@ enum redraw_target {
     REFUSED_TABLE,
     GEO_LOC_TABLE,
     GEO_ASN_TABLE,
-    SUMMARY_TABLE
+    SUMMARY_TABLE,
+    QTYPE_TABLE
 };
 int cur_target = SUMMARY_TABLE;
 
@@ -244,6 +245,9 @@ void redraw(struct dnsctxt *dns_ctxt) {
     case SUMMARY_TABLE:
         redraw_summary(dns_ctxt);
         break;
+    case QTYPE_TABLE:
+        redraw_table_str(dns_ctxt->qtype_table, "Top Query Types", START_ROW, START_COL, FULL);
+        break;
     case SOURCE_TABLE:
         redraw_table_ip(dns_ctxt->source_table, "Top Source IPs", START_ROW, START_COL, FULL);
         break;
@@ -296,6 +300,9 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     switch (ch) {
     case 's':
         cur_target = SUMMARY_TABLE;
+        break;
+    case 'q':
+        cur_target = QTYPE_TABLE;
         break;
     case '1':
         cur_target = QUERY2_TABLE;

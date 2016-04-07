@@ -36,6 +36,46 @@ bool cidr_match(uint32_t addr, uint32_t net, uint8_t bits) {
   return !((addr ^ net) & htonl(0xFFFFFFFFu << (32 - bits)));
 }
 
+const char* str_qtype(enum dns_type qtype) {
+
+    switch (qtype) {
+    case 255:
+        return "ANY";
+    case 1:
+        return "A";
+    case 2:
+        return "NS";
+    case 5:
+        return "CNAME";
+    case 6:
+        return "SOA";
+    case 12:
+        return "PTR";
+    case 15:
+        return "MX";
+    case 16:
+        return "TXT";
+    case 28:
+        return "AAAA";
+    case 33:
+        return "SRV";
+    case 41:
+        return "OPT";
+    case 99:
+        return "SPF";
+    case 38:
+        return "A6";
+    case 43:
+        return "DS";
+    case 52:
+        return "TLSA";
+
+    default:
+        //printf("fail: %d", qtype);
+        return "UNKNOWN";
+    }
+}
+
 void process_dns(struct pkt_buff *pkt, void *ctxt)
 {
     size_t   len = pkt_len(pkt);
@@ -84,11 +124,12 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
         dnsctxt_count_ip(&dns_ctxt->source_table, *pkt->src_addr);
         // incoming: store source udp port
         dnsctxt_count_int(&dns_ctxt->src_port_table, ntohs(*pkt->udp_src_port));
-        if (dns_header(dns_pkt)->qr == 1) {
-            // shouldn't see reply on incoming
+        if (dns_header(dns_pkt)->qr == 1 || dns_header(dns_pkt)->ancount > 0) {
+            // shouldn't see reply or answers on incoming
             dns_ctxt->cnt_malformed++;
             dnsctxt_count_ip(&dns_ctxt->malformed_table, *pkt->src_addr);
         }
+
         // if we have it, count by geo
         if (dns_ctxt->have_geo_loc) {
             geo = geoip4_loc_by_ip(*pkt->src_addr);
@@ -141,6 +182,10 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     if (dns_rr_grep(&rr, 1, I, dns_pkt, &error)) {
         if (!dns_d_expand((unsigned char *)qname, DNS_D_MAXNAME, rr.dn.p, dns_pkt, &error) && !error)
             goto skip_q_name;
+        // incoming: query type
+        if (incoming) {
+            dnsctxt_count_name(&dns_ctxt->qtype_table, str_qtype(rr.type));
+        }
     }
 
     // lowercase

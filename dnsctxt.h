@@ -63,6 +63,9 @@ struct dnsctxt {
     // REFUSED names
     struct str_entry *refused_table;
 
+    // QUERY types
+    struct str_entry *qtype_table;
+
     // GEO
     int have_geo_asn;
     int have_geo_loc;

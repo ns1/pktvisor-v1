@@ -165,6 +165,8 @@ void dnsctxt_table_summary(struct dnsctxt *ctxt) {
 
     printf("\nIncoming Sources IPs\n");
     _print_table_ip(ctxt->source_table);
+    printf("\nIncoming Query Types\n");
+    _print_table_str(ctxt->qtype_table);
     printf("\nIncoming Source Ports\n");
     _print_table_int(ctxt->src_port_table);
     printf("\nOutgoing Destinations IPs\n");
