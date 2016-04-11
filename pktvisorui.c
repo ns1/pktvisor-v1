@@ -202,9 +202,9 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
     if (last_incoming > 0 && last_rate_ts.tv_sec > 0) {
         t_delta = ((double)time_now.tv_sec+(double)time_now.tv_usec/1000000) -
                          ((double)last_rate_ts.tv_sec+(double)last_rate_ts.tv_usec/1000000);
-        incoming_pps = (uint64_t)((double)last_incoming / t_delta);
-        query_pps = (uint64_t)((double)last_query / t_delta);
-        reply_pps = (uint64_t)((double)last_reply / t_delta);
+        incoming_pps = (uint64_t)((double)(dns_ctxt->incoming - last_incoming) / t_delta);
+        query_pps = (uint64_t)((double)(dns_ctxt->cnt_query - last_query) / t_delta);
+        reply_pps = (uint64_t)((double)(dns_ctxt->cnt_reply - last_reply) / t_delta);
     }
     last_rate_ts.tv_sec = time_now.tv_sec;
     last_rate_ts.tv_usec = time_now.tv_usec;
