@@ -31,12 +31,13 @@ enum redraw_target {
     GEO_LOC_TABLE,
     GEO_ASN_TABLE,
     SUMMARY_TABLE,
-    QTYPE_TABLE
+    QTYPE_TABLE,
+    HELP
 };
 int cur_target = SUMMARY_TABLE;
 
 // rate computations
-uint64_t last_incoming,last_outgoing, last_query, last_reply;
+uint64_t last_incoming, last_outgoing, last_query, last_reply;
 struct timeval last_rate_ts;
 
 void gotsignalrm(int sig) {
@@ -239,6 +240,24 @@ void redraw_summary(struct dnsctxt *dns_ctxt) {
 
 }
 
+void redraw_help() {
+
+    printw("\n\n");
+    printw(" ? \t\tShow help\n");
+    printw(" s \t\tShow summary screen\n");
+    printw(" q \t\tShow top query types\n");
+    printw(" 0 \t\tShow top ASNs\n");
+    printw(" 1 \t\tShow top query domains (2 levels)\n");
+    printw(" 2 \t\tShow top query domains (3 levels)\n");
+    printw(" 3 \t\tShow top source IPs (from incoming pkts)\n");
+    printw(" 4 \t\tShow top destination IPs (in outgoing pkts)\n");
+    printw(" 5 \t\tShow top source IPs for malformed queries\n");
+    printw(" 6 \t\tShow top NXDOMAINs\n");
+    printw(" 7 \t\tShow top REFUSED\n");
+    printw(" 8 \t\tShow top source ports\n");
+    printw(" 9 \t\tShow top GeoIP\n");
+}
+
 void redraw(struct dnsctxt *dns_ctxt) {
 
     clear();
@@ -253,10 +272,10 @@ void redraw(struct dnsctxt *dns_ctxt) {
         redraw_table_str(dns_ctxt->qtype_table, "Top Query Types", START_ROW, START_COL, FULL);
         break;
     case SOURCE_TABLE:
-        redraw_table_ip(dns_ctxt->source_table, "Top Source IPs", START_ROW, START_COL, FULL);
+        redraw_table_ip(dns_ctxt->source_table, "Top Source IPs (Incoming)", START_ROW, START_COL, FULL);
         break;
     case DEST_TABLE:
-        redraw_table_ip(dns_ctxt->dest_table, "Top Destination IPs", START_ROW, START_COL, FULL);
+        redraw_table_ip(dns_ctxt->dest_table, "Top Destination IPs (Outgoing)", START_ROW, START_COL, FULL);
         break;
     case MALFORMED_TABLE:
         redraw_table_ip(dns_ctxt->malformed_table, "Malformed Query Source IPs", START_ROW, START_COL, FULL);
@@ -278,6 +297,9 @@ void redraw(struct dnsctxt *dns_ctxt) {
         break;
     case QUERY2_TABLE:
         redraw_table_str(dns_ctxt->query_name2_table, "Top Queries (2)", START_ROW, START_COL, FULL);
+        break;
+    case HELP:
+        redraw_help();
         break;
     case QUERY3_TABLE:
     default:
@@ -302,6 +324,9 @@ int keyboard(struct dnsctxt *dns_ctxt) {
     if (ch >= 'A' && ch <= 'Z')
         ch += 'a' - 'A';
     switch (ch) {
+    case '?':
+        cur_target = HELP;
+        break;
     case 's':
         cur_target = SUMMARY_TABLE;
         break;
