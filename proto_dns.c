@@ -92,8 +92,16 @@ void process_dns(struct pkt_buff *pkt, void *ctxt)
     // basic counts
     dns_ctxt->seen++;
 
-    // decide whether this is incoming or outgoing, based on our local network
-    incoming = cidr_match(*pkt->dest_addr, dns_ctxt->local_net, dns_ctxt->local_bits);
+    // decide whether this is incoming or outgoing
+    // if local net/bits was specified on command line, use that. this is useful for
+    // pcaps
+    if (dns_ctxt->local_bits != 0) {
+        incoming = cidr_match(*pkt->dest_addr, dns_ctxt->local_net, dns_ctxt->local_bits);
+    }
+    // otherwise, use pkttype, which is based on interface we're sniffing
+    else {
+        incoming = (pkt->pkttype == PACKET_HOST);
+    }
 
     if (incoming) {
         // incoming packet
