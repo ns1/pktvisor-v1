@@ -36,7 +36,7 @@ enum redraw_target {
 int cur_target = SUMMARY_TABLE;
 
 // rate computations
-uint64_t last_incoming, last_query, last_reply;
+uint64_t last_incoming,last_outgoing, last_query, last_reply;
 struct timeval last_rate_ts;
 
 void gotsignalrm(int sig) {
@@ -169,19 +169,20 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
     double outgoing = (double)dns_ctxt->seen - (double)dns_ctxt->incoming;
 
     // rates
-    uint64_t incoming_pps = 0, query_pps = 0, reply_pps = 0;
+    uint64_t incoming_pps = 0, outgoing_pps = 0, query_pps = 0, reply_pps = 0;
     struct timeval time_now;
     double t_delta = 0;
 
     // see HEADER_SIZE def
-    mvprintw(0, 0, "total  : %6lu, incming: %6lu, outgoing: %6lu, malformed: %6lu (%0.2f%%), EDNS: %6lu (%0.2f%%)",
+    mvprintw(0, 0, "total  : %6lu, incming: %6lu, outgoing: %6lu, malformed: %6lu (%0.2f%%) | ?=help", //, EDNS: %6lu (%0.2f%%)",
              dns_ctxt->seen,
              dns_ctxt->incoming,
              (long)outgoing,
              dns_ctxt->cnt_malformed,
              ((double)dns_ctxt->cnt_malformed / (double)dns_ctxt->seen)*100,
-             dns_ctxt->cnt_edns,
-             ((double)dns_ctxt->cnt_edns / (double)dns_ctxt->seen)*100);
+             dns_ctxt->cnt_edns
+             //,((double)dns_ctxt->cnt_edns / (double)dns_ctxt->seen)*100
+             );
 
     mvprintw(1, 0, "Query  : %6lu, Reply  : %6lu | 1=q2, 2=q3, 3=src, 4=dst, 5=mal, 6=nx, 7=ref, 8=ports, 9=geo, 0=asn",
              dns_ctxt->cnt_query,
@@ -203,17 +204,20 @@ void redraw_header(struct dnsctxt *dns_ctxt) {
         t_delta = ((double)time_now.tv_sec+(double)time_now.tv_usec/1000000) -
                          ((double)last_rate_ts.tv_sec+(double)last_rate_ts.tv_usec/1000000);
         incoming_pps = (uint64_t)((double)(dns_ctxt->incoming - last_incoming) / t_delta);
+        outgoing_pps = (uint64_t)((double)(outgoing - last_outgoing) / t_delta);
         query_pps = (uint64_t)((double)(dns_ctxt->cnt_query - last_query) / t_delta);
         reply_pps = (uint64_t)((double)(dns_ctxt->cnt_reply - last_reply) / t_delta);
     }
     last_rate_ts.tv_sec = time_now.tv_sec;
     last_rate_ts.tv_usec = time_now.tv_usec;
     last_incoming = dns_ctxt->incoming;
+    last_outgoing = outgoing;
     last_query = dns_ctxt->cnt_query;
     last_reply = dns_ctxt->cnt_reply;
 
-    mvprintw(3, 0, "RATES  : incoming %lu | query %lu | reply %lu | pkts per %0.2fs",
+    mvprintw(3, 0, "RATES  : incoming %lu | outgoing %lu | query %lu | reply %lu | pkts per %0.2fs",
              incoming_pps,
+             outgoing_pps,
              query_pps,
              reply_pps,
              t_delta);
