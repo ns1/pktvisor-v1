@@ -1,3 +1,13 @@
+pktvisor (0.8.0-r1-1) precise; urgency=low
+
+  * Add stats by query type
+  * Fix rates in UI
+  * Add help screen in UI
+  * Only use local_net/local_bits when passed in, e.g. for pcap
+    otherwise, use in/out data from interface
+
+ -- Shannon Weyrick <sweyrick@nsone.net>  Wed, 03 Nov 2015 13:12:03 -0500
+
 pktvisor (0.7.1-r1-1) precise; urgency=low
 
   * Add summary screen and rate information
