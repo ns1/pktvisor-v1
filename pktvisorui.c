@@ -236,7 +236,8 @@ void redraw_summary(struct dnsctxt *dns_ctxt) {
     redraw_table_str(dns_ctxt->query_name3_table, "Top Queries (3)", START_ROW+7, START_COL+65, 5);
 
     redraw_table_str(dns_ctxt->geo_loc_table, "By GeoLocation", START_ROW+14, START_COL, 5);
-    redraw_table_str(dns_ctxt->geo_asn_table, "By ASN", START_ROW+14, START_COL+40, 5);
+    redraw_table_str(dns_ctxt->qtype_table, "By QType", START_ROW+14, START_COL+27, 5);
+    redraw_table_str(dns_ctxt->geo_asn_table, "By ASN", START_ROW+14, START_COL+50, 5);
 
 }
 
