@@ -13,6 +13,7 @@ pktvisor-objs =	dissector.o \
 			dissector_eth.o \
 			lookup.o \
 			proto_arp.o \
+			proto_gre.o \
 			proto_ethernet.o \
 			proto_icmpv4.o \
 			proto_icmpv6.o \

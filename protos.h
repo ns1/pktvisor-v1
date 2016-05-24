@@ -4,6 +4,7 @@
 struct protocol;
 
 extern struct protocol arp_ops;
+extern struct protocol gre_ops;
 extern struct protocol ethernet_ops;
 extern struct protocol icmpv4_ops;
 extern struct protocol icmpv6_ops;

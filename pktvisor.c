@@ -1237,8 +1237,6 @@ static void __noreturn help(void)
          "  pktvisor --in eth1 --out /opt/probe/ -s -m --interval 100MiB -b 0\n"
          "  pktvisor --in vlan0 --out dump.pcap -c -u `id -u bob` -g `id -g bob`\n"
          "  pktvisor --in any --filter http.bpf --jumbo-support --ascii -V\n\n"
-         "Filter Note:\n"
-         "  The default filter if unspecified is 'udp port 53'\n"
          "Note:\n"
 	     "  For introducing bit errors, delays with random variation and more\n"
 	     "  while replaying pcaps, make use of tc(8) with its disciplines (e.g. netem).\n");
@@ -1491,10 +1489,6 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
-
-    if (!ctx.filter) {
-        ctx.filter = "udp port 53";
-    }
 
 	if (!ctx.filter && optind != argc) {
 		int ret;

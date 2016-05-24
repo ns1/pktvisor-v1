@@ -32,7 +32,7 @@ static inline void dissector_init_exit(int type)
 static void dissector_init_layer_2(int type)
 {
 	init_hash(&eth_lay2);
-	INSERT_HASH_PROTOS(arp_ops, eth_lay2);
+    INSERT_HASH_PROTOS(arp_ops, eth_lay2);
 	INSERT_HASH_PROTOS(lldp_ops, eth_lay2);
 	INSERT_HASH_PROTOS(vlan_ops, eth_lay2);
 	INSERT_HASH_PROTOS(ipv4_ops, eth_lay2);
@@ -45,6 +45,7 @@ static void dissector_init_layer_2(int type)
 static void dissector_init_layer_3(int type)
 {
 	init_hash(&eth_lay3);
+    INSERT_HASH_PROTOS(gre_ops, eth_lay3);
 	INSERT_HASH_PROTOS(icmpv4_ops, eth_lay3);
 	INSERT_HASH_PROTOS(icmpv6_ops, eth_lay3);
 	INSERT_HASH_PROTOS(igmp_ops, eth_lay3);
