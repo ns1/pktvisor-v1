@@ -1,3 +1,10 @@
+pktvisor (0.9.0-r1-1) precise; urgency=low
+
+  * Add GRE tunnel dissector
+  * Remove default UDP filter
+
+ -- Shannon Weyrick <sweyrick@ns1.com>  Wed, 24 May 2016 13:12:03 -0500
+
 pktvisor (0.8.0-r1-1) precise; urgency=low
 
   * Add stats by query type
