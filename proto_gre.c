@@ -18,6 +18,7 @@ struct grehdr {
     uint16_t gre_flags;
     uint16_t gre_proto;
     /*
+    // optional based on header flags
     uint16_t gre_checksum;
     uint16_t gre_reserved;
     uint32_t gre_key;
@@ -30,6 +31,9 @@ static void gre(struct pkt_buff *pkt)
 
     char *type;
     struct grehdr *gre = (struct grehdr *) pkt_pull(pkt, sizeof(*gre));
+
+    // FIXME technically we should pull more from header based on flags
+    // there may be 3 more words
 
     if (gre == NULL)
 		return;
