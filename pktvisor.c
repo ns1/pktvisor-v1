@@ -572,7 +572,7 @@ static void dns_summary(struct ctx *ctx)
            ctx->dns_ctxt.cnt_status_refused,
            ((double)ctx->dns_ctxt.cnt_status_refused / outgoing)*100);
 
-    dnsctxt_table_summary(&ctx->dns_ctxt);
+    dnsctxt_table_summary(&ctx->dns_ctxt, 3);
 
 }
 

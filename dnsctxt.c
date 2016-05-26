@@ -114,7 +114,7 @@ int sort_str_by_count(void *a, void *b) {
         return 1;
 }
 
-void _print_table_int(struct int32_entry *table) {
+void _print_table_int(struct int32_entry *table, int size) {
     struct int32_entry *entry, *tmp_entry;
     unsigned int i = 0;
 
@@ -124,12 +124,12 @@ void _print_table_int(struct int32_entry *table) {
     HASH_SORT(table, sort_int_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         printf("%u %lu\n", entry->key, entry->count);
-        if (++i > MAX_SUMMARY_SIZE)
+        if (++i >= size)
             break;
     }
 }
 
-void _print_table_ip(struct int32_entry *table) {
+void _print_table_ip(struct int32_entry *table, int size) {
     struct int32_entry *entry, *tmp_entry;
     char ip[INET_ADDRSTRLEN];
     unsigned int i = 0;
@@ -141,12 +141,12 @@ void _print_table_ip(struct int32_entry *table) {
     HASH_ITER(hh, table, entry, tmp_entry) {
         inet_ntop(AF_INET, &entry->key, ip, sizeof(ip));
         printf("%16s %lu\n", ip, entry->count);
-        if (++i > MAX_SUMMARY_SIZE)
+        if (++i >= size)
             break;
     }
 }
 
-void _print_table_str(struct str_entry *table) {
+void _print_table_str(struct str_entry *table, int size) {
     struct str_entry *entry, *tmp_entry;
     unsigned int i = 0;
 
@@ -156,35 +156,35 @@ void _print_table_str(struct str_entry *table) {
     HASH_SORT(table, sort_str_by_count);
     HASH_ITER(hh, table, entry, tmp_entry) {
         printf("%20s %lu\n", entry->key, entry->count);
-        if (++i > MAX_SUMMARY_SIZE)
+        if (++i >= size)
             break;
     }
 }
 
-void dnsctxt_table_summary(struct dnsctxt *ctxt) {
+void dnsctxt_table_summary(struct dnsctxt *ctxt, int size) {
 
     printf("\nIncoming Sources IPs\n");
-    _print_table_ip(ctxt->source_table);
+    _print_table_ip(ctxt->source_table, size);
     printf("\nIncoming Query Types\n");
-    _print_table_str(ctxt->qtype_table);
+    _print_table_str(ctxt->qtype_table, size);
     printf("\nIncoming Source Ports\n");
-    _print_table_int(ctxt->src_port_table);
+    _print_table_int(ctxt->src_port_table, size);
     printf("\nOutgoing Destinations IPs\n");
-    _print_table_ip(ctxt->dest_table);
+    _print_table_ip(ctxt->dest_table, size);
     printf("\nMalformed DNS Incoming Source IPs\n");
-    _print_table_ip(ctxt->malformed_table);
+    _print_table_ip(ctxt->malformed_table, size);
     printf("\nQueried Names (2)\n");
-    _print_table_str(ctxt->query_name2_table);
+    _print_table_str(ctxt->query_name2_table, size);
     printf("\nQueried Names (3)\n");
-    _print_table_str(ctxt->query_name3_table);
+    _print_table_str(ctxt->query_name3_table, size);
     printf("\nNXDOMAIN Names\n");
-    _print_table_str(ctxt->nxdomain_table);
+    _print_table_str(ctxt->nxdomain_table, size);
     printf("\nREFUSED Names\n");
-    _print_table_str(ctxt->refused_table);
+    _print_table_str(ctxt->refused_table, size);
     printf("\nGEO ASN\n");
-    _print_table_str(ctxt->geo_asn_table);
+    _print_table_str(ctxt->geo_asn_table, size);
     printf("\nGEO Location\n");
-    _print_table_str(ctxt->geo_loc_table);
+    _print_table_str(ctxt->geo_loc_table, size);
 
 }
 

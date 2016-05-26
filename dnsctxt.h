@@ -96,7 +96,7 @@ struct dnsctxt {
 
 void dnsctxt_init(struct dnsctxt *ctxt, uint32_t local_net, uint8_t local_bits);
 void dnsctxt_free(struct dnsctxt *ctxt);
-void dnsctxt_table_summary(struct dnsctxt *ctxt);
+void dnsctxt_table_summary(struct dnsctxt *ctxt, int size);
 
 void dnsctxt_count_ip(struct int32_entry **table, uint32_t key);
 void dnsctxt_count_name(struct str_entry **table, char *name);
