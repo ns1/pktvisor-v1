@@ -20,7 +20,7 @@ HAVE_TPACKET3=0
 
 [ -z $CC ] && CC=cc
 
-TMPDIR=$(mktemp -d config.XXXXXX)
+TMPDIR=$(mktemp -d /tmp/config.XXXXXX)
 trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
 
 tools_remove()
