@@ -137,7 +137,7 @@ void redraw_table_str(struct str_entry *table, char *txt_hdr, int row, int col, 
     }
     i = 0;
     HASH_ITER(hh_srt, sorted_table, entry, tmp_entry) {
-        mvprintw(++row, col, "%-*s %lu", max_len, strlen(entry->key) ? entry->key : ".", entry->count);
+        mvprintw(++row, col, "%-*s %lu", max_len, strlen(entry->key) ? entry->key : "[empty]", entry->count);
         if (++i >= max)
             break;
     }

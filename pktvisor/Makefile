@@ -1,5 +1,7 @@
-pktvisor-libs =	  -lpthread \
-		  -lncurses
+pktvisor-libs = $(shell pkg-config --libs libnl-3.0) \
+                $(shell pkg-config --libs libnl-genl-3.0) \
+        	    -lpthread \
+		        -lncurses
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 pktvisor-libs +=	-lpcap
@@ -11,6 +13,7 @@ endif
 
 pktvisor-objs =	dissector.o \
 			dissector_eth.o \
+			dissector_netlink.o \
 			lookup.o \
 			proto_arp.o \
 			proto_gre.o \
@@ -30,6 +33,7 @@ pktvisor-objs =	dissector.o \
 			proto_ipv6_no_nxt_hdr.o \
 			proto_ipv6_routing.o \
 			proto_lldp.o \
+			proto_nlmsg.o \
 			proto_none.o \
 			proto_tcp.o \
 			proto_udp.o \
