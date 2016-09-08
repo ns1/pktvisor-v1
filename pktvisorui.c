@@ -261,7 +261,7 @@ void redraw_help() {
 
 void redraw(struct dnsctxt *dns_ctxt) {
 
-    clear();
+    erase();
 
     redraw_header(dns_ctxt);
 
