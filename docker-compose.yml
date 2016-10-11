@@ -20,7 +20,7 @@ services:
         working_dir: /builder
         # HACK: Stupid dpkg builder can only output to parent dir so we copy the result
         # so as to expose it for the caller of this docker.
-        command: [/bin/sh, -c, "dpkg-buildpackage -us -uc -b && cp ../pktvisor_*.deb /builder/"]
+        command: [/bin/sh, -c, "dpkg-buildpackage -us -uc -b && mv ../pktvisor_*.deb /builder/"]
 
     # For running locally.  Requires that the builder image be built.
     pktvisor:
