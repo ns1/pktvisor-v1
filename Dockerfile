@@ -4,7 +4,7 @@ RUN apt-get update \
     && apt-get install -q -y software-properties-common \
     && add-apt-repository ppa:maxmind/ppa \
     && apt-get update \
-    && apt-get install -q -y build-essential dh-autoreconf dh-make debhelper devscripts fakeroot lintian pbuilder libncurses5-dev pkg-config bison flex libcli-dev libgeoip-dev libnacl-dev zlib1g-dev libnl-genl-3-dev libpcap-dev libmaxminddb-dev \
+    && apt-get install -q -y build-essential dh-autoreconf dh-make debhelper devscripts fakeroot lintian pbuilder libncurses5-dev pkg-config bison flex libcli-dev libnacl-dev libnl-genl-3-dev libpcap-dev libmaxminddb-dev \
     && rm -rf /var/lib/apt/lists/* /var/lib/apt /var/cache/apt
 
 USER root
