@@ -4,623 +4,287 @@
  * Subject to the GPL, version 2.
  */
 
-#include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <GeoIP.h>
-#include <GeoIPCity.h>
+#include <math.h>
+#include <maxminddb.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include "built_in.h"
 #include "die.h"
 #include "ioops.h"
 #include "str.h"
 #include "xmalloc.h"
-#include "zlib.h"
-#include "geoip.h"
-
-struct file {
-	const char *desc, *local;
-	const char *remote, *possible_prefix;
-};
 
 #define LOC_BUF_LEN 80
+#define GEO_OK(r) ((r) == MMDB_SUCCESS)
+#define GEO_ERROR(r) ((r) != MMDB_SUCCESS)
 
-#define PRE	"/download/geoip/database"
-static const struct file files[] = {
-	[GEOIP_CITY_EDITION_REV1] = {
-			.desc = "City IPv4",
-			.local = ETCDIRE_STRING "/city4.dat",
-			.remote = "/GeoLiteCity.dat.gz",
-			.possible_prefix = PRE,
-		},
-	[GEOIP_CITY_EDITION_REV1_V6] = {
-			.desc = "City IPv6",
-			.local = ETCDIRE_STRING "/city6.dat",
-			.remote = "/GeoLiteCityv6.dat.gz",
-			.possible_prefix = PRE "/GeoLiteCityv6-beta",
-		},
-	[GEOIP_COUNTRY_EDITION] = {
-			.desc = "Country IPv4",
-			.local = ETCDIRE_STRING "/country4.dat",
-			.remote = "/GeoIP.dat.gz",
-			.possible_prefix = PRE "/GeoLiteCountry",
-		},
-	[GEOIP_COUNTRY_EDITION_V6] = {
-			.desc = "Country IPv6",
-			.local = ETCDIRE_STRING "/country6.dat",
-			.remote = "/GeoIPv6.dat.gz",
-			.possible_prefix = PRE,
-		},
-	[GEOIP_ASNUM_EDITION] = {
-			.desc = "AS Numbers IPv4",
-			.local = ETCDIRE_STRING "/asname4.dat",
-			.remote = "/GeoIPASNum.dat.gz",
-			.possible_prefix = PRE "/asnum",
-		},
-	[GEOIP_ASNUM_EDITION_V6] = {
-			.desc = "AS Numbers IPv6",
-			.local = ETCDIRE_STRING "/asname6.dat",
-			.remote = "/GeoIPASNumv6.dat.gz",
-			.possible_prefix = PRE "/asnum",
-		},
-};
+static MMDB_s mmdb_city;
+static bool has_city = false;
 
-static GeoIP *gi4_asname = NULL, *gi6_asname = NULL;
-static GeoIP *gi4_country = NULL, *gi6_country = NULL;
-static GeoIP *gi4_city = NULL, *gi6_city = NULL;
-
-static GeoIPRecord empty = { NULL };
-
-static char *servers[16] = { NULL };
-
-#define CITYV4		(1 << 0)
-#define CITYV6		(1 << 1)
-#define COUNTRYV4	(1 << 2)
-#define COUNTRYV6	(1 << 3)
-#define ASNAMV4		(1 << 4)
-#define ASNAMV6		(1 << 5)
-
-#define HAVEALL		(CITYV4 | CITYV6 | COUNTRYV4 | COUNTRYV6 | ASNAMV4 | ASNAMV6)
-
-static int geoip_db_present = 0;
+static MMDB_s mmdb_isp;
+static bool has_isp = false;
 
 int geoip_working(void)
 {
-	return geoip_db_present == HAVEALL;
+	return (has_city && has_isp);
 }
 
-static int geoip_get_remote_fd(const char *server, const char *port)
+/**
+ * Lookup data and fill the given result struct.
+ */
+static int lookup_entry_data_va(MMDB_s *db, struct sockaddr *sa, MMDB_entry_data_s *result, va_list path) 
 {
-	int ret, fd = -1;
-	struct addrinfo hints, *ahead, *ai;
+	int mmdb_error;
+	MMDB_lookup_result_s lookup_result = MMDB_lookup_sockaddr(db, sa, &mmdb_error);
 
-	bug_on(!server || !port);
+	if (GEO_ERROR(mmdb_error)) {
+		return mmdb_error;
+	} else if (!lookup_result.found_entry) {
+		return MMDB_INVALID_LOOKUP_PATH_ERROR;
+	}
 
-	memset(&hints, 0, sizeof(hints));
+	mmdb_error = MMDB_vget_value(&lookup_result.entry, result, path);
+	if (GEO_ERROR(mmdb_error)) {
+		return mmdb_error;
+	} else {
+		return MMDB_SUCCESS;
+	}
+}
 
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_NUMERICSERV;
+/**
+ * Variadic version of data lookup.
+ */
+static int lookup_entry_data(MMDB_s *db, struct sockaddr *sa, MMDB_entry_data_s *result, ...)
+{
+	va_list path;
+	va_start(path, result);
+	return lookup_entry_data_va(db, sa, result, path);
+}
 
-	ret = getaddrinfo(server, port, &hints, &ahead);
-	if (ret != 0)
-		return -EIO;
+/**
+ * Lookup a single string from the given path, returning NULL if not found (or errors).
+ */
+static char *lookup_string(MMDB_s *db, struct sockaddr *sa, ...)
+{
+	va_list path;
+	va_start(path, sa);
 
-	for (ai = ahead; ai != NULL && fd < 0; ai = ai->ai_next) {
-		fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (fd < 0)
-			continue;
+	MMDB_entry_data_s entry_data;
+	int status = lookup_entry_data_va(db, sa, &entry_data, path);
+	if (GEO_OK(status) && entry_data.has_data && entry_data.type == MMDB_DATA_TYPE_UTF8_STRING) {
+		return strndup(entry_data.utf8_string, entry_data.data_size);
+	} else {
+		return NULL;
+	}
+}
 
-		ret = connect(fd, ai->ai_addr, ai->ai_addrlen);
-		if (ret < 0) {
-			close(fd);
-			fd = -1;
-			continue;
-		}
+/**
+ * Lookup an ASN + Organization label.  This must be synthesized because GeoIP2 stores the AS num
+ * and the org string separately.
+ */
+static char *lookup_as_label(struct sockaddr *sa)
+{
 
+	MMDB_entry_data_s entry_data;
+	int status = lookup_entry_data(&mmdb_isp, sa, &entry_data, "autonomous_system_number", NULL);
+	if (GEO_ERROR(status) || !entry_data.has_data) {
+		entry_data.type = UINT32_MAX;
+	}
+
+	char *actual_org_name = lookup_string(&mmdb_isp, sa, "autonomous_system_organization", NULL);
+	char *name = actual_org_name ? actual_org_name : "Unknown";
+
+	char *buf = malloc(LOC_BUF_LEN);
+	switch (entry_data.type) {
+		case MMDB_DATA_TYPE_UINT16:
+			snprintf(buf, LOC_BUF_LEN, "AS%d %s", entry_data.uint16, name);
 		break;
+		case MMDB_DATA_TYPE_UINT32:
+			snprintf(buf, LOC_BUF_LEN, "AS%d %s", entry_data.uint32, name);
+		break;
+		case MMDB_DATA_TYPE_UINT64:
+			snprintf(buf, LOC_BUF_LEN, "AS%lu %s", entry_data.uint64, name);
+		break;
+		case MMDB_DATA_TYPE_INT32:
+			snprintf(buf, LOC_BUF_LEN, "AS%d %s", entry_data.int32, name);
+		break;
+		default:
+			snprintf(buf, LOC_BUF_LEN, "AS0 %s", name);
+		break;
+    }
+
+	if (actual_org_name) {
+		free(actual_org_name);
 	}
 
-	freeaddrinfo(ahead);
-
-	return fd;
-}
-
-static void geoip_inflate(int which)
-{
-	int ret, ret2 = 1;
-	gzFile fpi;
-	FILE *fpo;
-	char zfile[128], raw[4096];
-
-	slprintf(zfile, sizeof(zfile), "%s.gz", files[which].local);
-	fpi = gzopen(zfile, "rb");
-	if (fpi == NULL)
-		panic("No %s file!\n", zfile);
-
-	fpo = fopen(files[which].local, "wb");
-	if (fpo == NULL)
-		panic("Cannot create %s!\n", files[which].local);
-
-	while ((ret = gzread(fpi, raw, sizeof(raw))) && ret2)
-		ret2 = fwrite(raw, ret, 1, fpo);
-
-	gzclose(fpi);
-	fclose(fpo);
-}
-
-static int geoip_get_database(const char *host, int which)
-{
-	int found, sock, fd, i, good, retry = 0;
-	ssize_t ret, len, rtotlen = 0, totlen = 0;
-	char raw[4096], *ptr, zfile[128];
-	size_t lenl = strlen("Content-Length: ");
-	size_t lent = strlen("HTTP/1.1 200 OK");
-	size_t lenc = strlen("\r\n\r\n");
-
-again:
-	found = good = 0;
-	ptr = NULL;
-	len = 0;
-
-	sock = geoip_get_remote_fd(host, "80");
-	if (sock < 0)
-		return -EIO;
-
-	slprintf(raw, sizeof(raw), "GET %s%s HTTP/1.1\nHost: %s\r\n\r\n",
-		 retry ? files[which].possible_prefix : "",
-		 files[which].remote, host);
-
-	ret = write(sock, raw, strlen(raw));
-	if (ret <= 0) {
-		close(sock);
-		return -EIO;
-	}
-
-	shutdown(sock, SHUT_WR);
-
-	slprintf(zfile, sizeof(zfile), "%s.gz", files[which].local);
-	fd = open_or_die_m(zfile, O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE);
-
-	memset(raw, 0, sizeof(raw));
-	ret = read(sock, raw, sizeof(raw));
-	if (ret <= 0) {
-		close(fd);
-		close(sock);
-		return -EIO;
-	}
-
-	raw[sizeof(raw) - 1] = 0;
-
-	for (i = 0; i < ret; i++) {
-		if (!strncmp(raw + i, "Content-Length: ", min_t(size_t, ret - i, lenl))) {
-			ptr = raw + i + lenl;
-			rtotlen = strtoul(ptr, NULL, 10);
-		}
-
-		if (!strncmp(raw + i, "HTTP/1.1 200 OK", min_t(size_t, ret - i, lent)))
-			good = 1;
-
-		if (!strncmp(raw + i, "\r\n\r\n", min_t(size_t, ret - i, lenc))) {
-			ptr = raw + i + lenc;
-			len = ret - i - lenc;
-			found = 1;
-			break;
-		}
-	}
-
-	if (!found || ptr >= raw + ret || len < 0 || rtotlen == 0 || good == 0) {
-		close(fd);
-		close(sock);
-
-		if (retry == 0) {
-			retry = 1;
-			goto again;
-		}
-
-		return -ENOENT;
-	}
-
-	do {
-		write_or_die(fd, ptr, len);
-		totlen += len;
-		printf("\r%s [%.2f%%, %zd/%zd, %s]", files[which].desc,
-		       100.f * totlen / rtotlen, totlen, rtotlen, host);
-		fflush(stdout);
-
-		memset(raw, 0, sizeof(raw));
-		ret = read(sock, raw, sizeof(raw));
-
-		ptr = raw;
-		len = ret;
-	} while(ret > 0);
-
-	printf("\n");
-
-	close(fd);
-	close(sock);
-
-	if (totlen != rtotlen) {
-		unlink(files[which].local);
-		return -EIO;
-	}
-
-	geoip_inflate(which);
-	unlink(zfile);
-
-	return 0;
-}
-
-static GeoIPRecord *geoip4_get_record(struct sockaddr_in *sa)
-{
-	bug_on(gi4_city == NULL);
-
-	return GeoIP_record_by_ipnum(gi4_city, ntohl(sa->sin_addr.s_addr)) ? : &empty;
-}
-
-static GeoIPRecord *geoip6_get_record(struct sockaddr_in6 *sa)
-{
-	bug_on(gi6_city == NULL);
-
-	return GeoIP_record_by_ipnum_v6(gi6_city, sa->sin6_addr) ? : &empty;
+	return buf;
 }
 
 const char *geoip4_as_name_by_ip(uint32_t ip)
 {
-    bug_on(gi4_asname == NULL);
+	bug_on(!has_isp);
 
-    return GeoIP_name_by_ipnum(gi4_asname, ntohl(ip));
+	struct sockaddr_in sa;
+	sa.sin_family = AF_INET;
+	sa.sin_port = 1;
+	sa.sin_addr.s_addr = ip;  // calling conventions assume this is already in network form.
+
+	return lookup_as_label((struct sockaddr *) &sa);
 }
 
 const char *geoip4_as_name(struct sockaddr_in *sa)
 {
-	bug_on(gi4_asname == NULL);
+	bug_on(!has_isp);
 
-	return GeoIP_name_by_ipnum(gi4_asname, ntohl(sa->sin_addr.s_addr));
+	return lookup_as_label((struct sockaddr *) sa);
 }
 
 const char *geoip6_as_name(struct sockaddr_in6 *sa)
 {
-	bug_on(gi6_asname == NULL);
+	bug_on(!has_isp);
 
-	return GeoIP_name_by_ipnum_v6(gi6_asname, sa->sin6_addr);
+	return lookup_as_label((struct sockaddr *) sa);
+}
+
+static float lookup_lat_or_lon(struct sockaddr *sa, char *lat_or_lon)
+{
+	MMDB_entry_data_s entry_data;
+	int status = lookup_entry_data(&mmdb_city, (struct sockaddr *) sa, &entry_data, "location", lat_or_lon, NULL);
+	if (GEO_ERROR(status) || !entry_data.has_data) {
+		return .0f;
+	} else {
+		switch (entry_data.type) {
+			case MMDB_DATA_TYPE_FLOAT:
+				return entry_data.float_value;
+			case MMDB_DATA_TYPE_DOUBLE:
+				// Cast away double-ness because the existing geoip API can't handle it anyway.
+				return (float) entry_data.double_value;
+			default:
+				return .0f;
+		}
+	}
 }
 
 float geoip4_longitude(struct sockaddr_in *sa)
 {
-	return geoip4_get_record(sa)->longitude;
+	return lookup_lat_or_lon((struct sockaddr *) sa, "longitude");
 }
 
 float geoip4_latitude(struct sockaddr_in *sa)
 {
-	return geoip4_get_record(sa)->latitude;
+	return lookup_lat_or_lon((struct sockaddr *) sa, "latitude");
 }
 
 float geoip6_longitude(struct sockaddr_in6 *sa)
 {
-	return geoip6_get_record(sa)->longitude;
+	return lookup_lat_or_lon((struct sockaddr *) sa, "longitude");
 }
 
 float geoip6_latitude(struct sockaddr_in6 *sa)
 {
-	return geoip6_get_record(sa)->latitude;
+	return lookup_lat_or_lon((struct sockaddr *) sa, "latitude");
 }
 
 const char *geoip4_city_name(struct sockaddr_in *sa)
 {
-	return geoip4_get_record(sa)->city;
+	return lookup_string(&mmdb_city, (struct sockaddr *) sa, "city", "names", "en", NULL);
 }
 
 const char *geoip6_city_name(struct sockaddr_in6 *sa)
 {
-	return geoip6_get_record(sa)->city;
+	return lookup_string(&mmdb_city, (struct sockaddr *) sa, "city", "names", "en", NULL);
 }
 
 const char *geoip4_region_name(struct sockaddr_in *sa)
 {
-	return geoip4_get_record(sa)->region;
+	// This will return an ISO code like the previous version did.  Alternative would be:
+	// "continent", "names", "en" or "continent", "code".
+	return lookup_string(&mmdb_city, (struct sockaddr *) sa, "subdivisions", "0", "iso_code", NULL);
 }
 
 const char *geoip6_region_name(struct sockaddr_in6 *sa)
 {
-	return geoip6_get_record(sa)->region;
+	return lookup_string(&mmdb_city, (struct sockaddr *) sa, "subdivisions", "0", "iso_code", NULL);
 }
 
 const char *geoip4_country_name(struct sockaddr_in *sa)
 {
-	bug_on(gi4_country == NULL);
+	char *name = lookup_string(&mmdb_city, (struct sockaddr *) sa, "country", "names", "en", NULL);
+	if (!name) {
+		name = lookup_string(&mmdb_city, (struct sockaddr *) sa, "country", "iso_code", NULL);
+	}
 
-	return GeoIP_country_name_by_ipnum(gi4_country, ntohl(sa->sin_addr.s_addr));
+	return name;
 }
 
 const char *geoip6_country_name(struct sockaddr_in6 *sa)
 {
-	bug_on(gi6_country == NULL);
+	char *name = lookup_string(&mmdb_city, (struct sockaddr *) sa, "country", "names", "en", NULL);
+	if (!name) {
+		name = lookup_string(&mmdb_city, (struct sockaddr *) sa, "country", "iso_code", NULL);
+	}
 
-	return GeoIP_country_name_by_ipnum_v6(gi6_country, sa->sin6_addr);
+	return name;
 }
 
 char *geoip4_loc_by_ip(uint32_t ip)
 {
-    bug_on(gi4_city == NULL);
+	bug_on(!has_city);
 
-    GeoIPRecord* entry = GeoIP_record_by_ipnum(gi4_city, ntohl(ip)) ? : &empty;
+	struct sockaddr_in sa;
+	sa.sin_family = AF_INET;
+	sa.sin_port = 1;
+	sa.sin_addr.s_addr = ip;
 
-    char *buf = malloc(LOC_BUF_LEN);
-    snprintf(buf, LOC_BUF_LEN, "%s/%s",
-        (entry->country_code ? entry->country_code : "Unknown"),
-        (entry->region ? entry->region : "Unknown"));
+	char *country = lookup_string(&mmdb_city, (struct sockaddr *) &sa, "country", "iso_code", NULL);
+	const char *region = geoip4_region_name(&sa);
 
-    return buf;
+	char *buf = malloc(LOC_BUF_LEN);
+	snprintf(buf, LOC_BUF_LEN, "%s/%s",
+		(country ? country : "Unknown"),
+		(region ? region : "Unknown"));
 
-}
-
-static int fdout, fderr;
-
-/* GeoIP people were too stupid to come to the idea that you could set
- * errno appropriately and return NULL instead of printing stuff from
- * the library directly that noone can turn off.
- */
-
-static void geoip_open_prepare(void)
-{
-	fflush(stdout);
-	fdout = dup_or_die(1);
-
-	fflush(stderr);
-	fderr = dup_or_die(2);
-
-	close(1);
-	close(2);
-}
-
-static void geoip_open_restore(void)
-{
-	dup2_or_die(fdout, 1);
-	dup2_or_die(fderr, 2);
-
-	close(fdout);
-	close(fderr);
-}
-
-static GeoIP *geoip_open_type(int type, int flags)
-{
-	GeoIP *ret;
-
-	geoip_open_prepare();
-	ret = GeoIP_open_type(type, flags);
-	geoip_open_restore();
-
-	return ret;
-}
-
-static GeoIP *geoip_open(const char *filename, int flags)
-{
-	GeoIP *ret;
-
-	geoip_open_prepare();
-	ret = GeoIP_open(filename, flags);
-	geoip_open_restore();
-
-	return ret;
-}
-
-static void init_geoip_city_open4(const char* db)
-{
-    gi4_city = geoip_open(db, GEOIP_MMAP_CACHE);
-	if (gi4_city == NULL) {
-		gi4_city = geoip_open_type(GEOIP_CITY_EDITION_REV1, GEOIP_MMAP_CACHE);
-		if (gi4_city == NULL)
-            panic("Cannot open GeoIP4 city database\n");
+	if (country) {
+		free(country);
 	}
 
-    if (gi4_city) {
-		GeoIP_set_charset(gi4_city, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= CITYV4;
-	}
-}
-
-static void init_geoip_city_open6(int enforce)
-{
-	gi6_city = geoip_open(files[GEOIP_CITY_EDITION_REV1_V6].local, GEOIP_MMAP_CACHE);
-	if (gi6_city == NULL) {
-		gi6_city = geoip_open_type(GEOIP_CITY_EDITION_REV1_V6, GEOIP_MMAP_CACHE);
-		if (gi6_city == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP6 city database, try --update!\n");
+	if (region) {
+		free((char *)region);
 	}
 
-	if (gi6_city) {
-		GeoIP_set_charset(gi6_city, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= CITYV6;
-	}
-}
-
-static void init_geoip_city(const char* db)
-{
-    init_geoip_city_open4(db);
-    //init_geoip_city_open6(enforce);
-}
-
-static void destroy_geoip_city(void)
-{
-	GeoIP_delete(gi4_city);
-	GeoIP_delete(gi6_city);
-}
-
-static void init_geoip_country_open4(int enforce)
-{
-	gi4_country = geoip_open(files[GEOIP_COUNTRY_EDITION].local, GEOIP_MMAP_CACHE);
-	if (gi4_country == NULL) {
-		gi4_country = geoip_open_type(GEOIP_COUNTRY_EDITION, GEOIP_MMAP_CACHE);
-		if (gi4_country == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP4 country database, try --update!\n");
-	}
-
-	if (gi4_country) {
-		GeoIP_set_charset(gi4_country, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= COUNTRYV4;
-	}
-}
-
-static void init_geoip_country_open6(int enforce)
-{
-	gi6_country = geoip_open(files[GEOIP_COUNTRY_EDITION_V6].local, GEOIP_MMAP_CACHE);
-	if (gi6_country == NULL) {
-		gi6_country = geoip_open_type(GEOIP_COUNTRY_EDITION_V6, GEOIP_MMAP_CACHE);
-		if (gi6_country == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP6 country database, try --update!\n");
-	}
-
-	if (gi6_country) {
-		GeoIP_set_charset(gi6_country, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= COUNTRYV6;
-	}
-}
-
-static void init_geoip_country(int enforce)
-{
-	init_geoip_country_open4(enforce);
-	init_geoip_country_open6(enforce);
-}
-
-static void destroy_geoip_country(void)
-{
-	GeoIP_delete(gi4_country);
-	GeoIP_delete(gi6_country);
-}
-
-static void init_geoip_asname_open4(const char* db)
-{
-    gi4_asname = geoip_open(db, GEOIP_MMAP_CACHE);
-	if (gi4_asname == NULL) {
-		gi4_asname = geoip_open_type(GEOIP_ASNUM_EDITION, GEOIP_MMAP_CACHE);
-		if (gi4_asname == NULL)
-            panic("Cannot open GeoIP4 AS database\n");
-	}
-
-	if (gi4_asname) {
-		GeoIP_set_charset(gi4_asname, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= ASNAMV4;
-	}
-}
-
-static void init_geoip_asname_open6(int enforce)
-{
-	gi6_asname = geoip_open(files[GEOIP_ASNUM_EDITION_V6].local, GEOIP_MMAP_CACHE);
-	if (gi6_asname == NULL) {
-		gi6_asname = geoip_open_type(GEOIP_ASNUM_EDITION_V6, GEOIP_MMAP_CACHE);
-		if (gi6_asname == NULL)
-			if (enforce)
-				panic("Cannot open GeoIP6 AS database, try --update!\n");
-	}
-
-	if (gi6_asname) {
-		GeoIP_set_charset(gi6_asname, GEOIP_CHARSET_UTF8);
-		geoip_db_present |= ASNAMV6;
-	}
-}
-
-static void init_geoip_asname(const char* db)
-{
-    init_geoip_asname_open4(db);
-    //init_geoip_asname_open6(enforce);
-}
-
-static void destroy_geoip_asname(void)
-{
-	GeoIP_delete(gi4_asname);
-	GeoIP_delete(gi6_asname);
-}
-
-static void init_mirrors(void)
-{
-	size_t i = 0;
-	FILE *fp;
-	char buff[256];
-
-	fp = fopen(ETCDIRE_STRING "/geoip.conf", "r");
-	if (!fp)
-		panic("Cannot open geoip.conf!\n");
-
-	fmemset(buff, 0, sizeof(buff));
-	while (fgets(buff, sizeof(buff), fp) != NULL &&
-	       i < array_size(servers)) {
-		buff[sizeof(buff) - 1] = 0;
-		buff[strlen(buff) - 1] = 0;
-
-		if (buff[0] == '#') {
-			fmemset(buff, 0, sizeof(buff));
-			continue;
-		}
-
-		servers[i++] = xstrdup(buff);
-		fmemset(buff, 0, sizeof(buff));
-	}
-
-	fclose(fp);
-}
-
-static void destroy_mirrors(void)
-{
-	size_t i;
-
-	for (i = 0; i < array_size(servers); ++i)
-		free(servers[i]);
+	return buf;
 }
 
 void init_geoip(const char *citydb, const char *asndb)
 {
-    if (citydb)
-        init_geoip_city(citydb);
-    if (asndb)
-        init_geoip_asname(asndb);
-}
+	int result;
 
-void update_geoip(void)
-{
-	size_t i, j;
-	int ret, good = 0;
-
-	init_mirrors();
-
-	for (i = 0; i < array_size(files); ++i) {
-		if (files[i].local && files[i].remote) {
-			good = 0;
-
-			for (j = 0; j < array_size(servers); ++j) {
-				if (servers[j] == NULL)
-					continue;
-				ret = geoip_get_database(servers[j], i);
-				if (!ret) {
-					good = 1;
-					break;
-				}
-			}
-
-			if (good == 0)
-				panic("Cannot get %s from mirrors!\n",
-				      files[i].remote);
-		}
+	if (citydb) {
+		result = MMDB_open(citydb, MMDB_MODE_MMAP, &mmdb_city);
+		bug_on(result != MMDB_SUCCESS);
+		has_city = true;
 	}
 
-	destroy_mirrors();
+	if (asndb) {
+		result = MMDB_open(asndb, MMDB_MODE_MMAP, &mmdb_isp);
+		bug_on(result != MMDB_SUCCESS);
+		has_isp = true;
+	}
 }
 
 void destroy_geoip(void)
 {
-	destroy_geoip_city();
-	destroy_geoip_country();
-	destroy_geoip_asname();
+	if (has_city) {
+		MMDB_close(&mmdb_city);
+		has_city = false;
+	}
 
-	geoip_db_present = 0;
+	if (has_isp) {
+		MMDB_close(&mmdb_isp);
+		has_isp = false;
+	}
 }
+
