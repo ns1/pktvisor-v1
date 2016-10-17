@@ -1,3 +1,6 @@
+pktvisor - DNS protocol analyzer
+================================
+
 This project is a fork and reorganization of netsniff-ng, available at
 http://netsniff-ng.org/
 
@@ -10,3 +13,28 @@ UI that provides a top-like interface to live DNS traffic statistics, including
 traffic by source/destination IP, DNS query label, result codes, source ports,
 Geo and ASN.
 
+Building via Docker (Compose)
+-------------------
+
+You'll need Docker and Docker Compose installed for this.  This is useful for simple cross compliation or in CI environments.
+
+To use the Docker to build the pktvisor binary do the following:
+
+```
+$ cd pktvisor
+$ docker-compose build
+$ docker-compose run --rm builder ./configure
+$ docker-compose run --rm builder make
+```
+
+After the `builder` container exists you can also create a release build (a Debian package) as follows:
+
+```
+$ docker-compose run --rm release
+```
+
+After building, you can even run pktvisor in a Docker:
+
+```
+$ docker-compose run --rm pktvisor <options>
+```
