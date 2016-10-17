@@ -1,13 +1,15 @@
+sudo: required
 language: c
-compiler:
-  - gcc
-  - clang
+services:
+  - docker
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libgeoip-dev liburcu-dev libpcap-dev libnet1-dev libcli-dev libnl-3-dev libnl-genl-3-dev
+  - docker-compose build
 
-script: CC=$CC cd src && ./configure && make CC=$CC
+script: 
+  - docker-compose run --rm builder ./configure
+  - docker-compose run --rm builder make
+
 notifications:
   slack:
     secure: kXWHt2FwGzohgwmwDH262R3B359iRmsjPE/wF90ur6/TOfTvxuZicpPOVWsglgDgVP92zMklwgOs941IJmg4VVvqjuvDYeaMB+KLHvxb4Vl0pOg7mLpOXmIVt3NwL3+miSwoQ24XHJb6vGzubeHAjSXpD0N1tVxb792DvHztDTo=

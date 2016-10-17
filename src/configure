@@ -265,27 +265,18 @@ EOF
 
 check_libgeoip()
 {
-	echo -n "[*] Checking libGeoIP ... "
+	echo -n "[*] Checking libmaxminddb ... "
 
 	cat > $TMPDIR/geoiptest.c << EOF
-#include <GeoIP.h>
-#include <GeoIPCity.h>
+#include <maxminddb.h>
 
-int main(void)
+void main(void)
 {
-	int dbs[] = {
-		GEOIP_CITY_EDITION_REV1,
-		GEOIP_CITY_EDITION_REV1_V6,
-		GEOIP_COUNTRY_EDITION,
-		GEOIP_COUNTRY_EDITION_V6,
-		GEOIP_ASNUM_EDITION,
-		GEOIP_ASNUM_EDITION_V6,
-	};
-	GeoIP *geoip = GeoIP_new(0);
+	MMDB_strerror(MMDB_FILE_OPEN_ERROR);
 }
 EOF
 
-	$CC -o $TMPDIR/geoiptest $TMPDIR/geoiptest.c -lGeoIP >> config.log 2>&1
+	$CC -o $TMPDIR/geoiptest $TMPDIR/geoiptest.c -lmaxminddb >> config.log 2>&1
 	if [ ! -x $TMPDIR/geoiptest ] ; then
 		echo "[NO]"
 		MISSING_DEFS=1
@@ -622,7 +613,7 @@ if [ -s config.log ] ; then
 	echo "    config.log for details."
 fi
 
-if [ "$HAVE_LIBGEOIP" == "1" -a "$HAVE_LIBZ" == "1"  ] ; then
+if [ "$HAVE_LIBGEOIP" == "1" ] ; then
 	echo "CONFIG_GEOIP=1" >> Config
 else
 	echo "CONFIG_GEOIP=0" >> Config

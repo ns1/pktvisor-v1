@@ -1,14 +1,14 @@
 pktvisor-libs = $(shell pkg-config --libs libnl-3.0) \
                 $(shell pkg-config --libs libnl-genl-3.0) \
         	    -lpthread \
-		        -lncurses
+		    -lncurses \
+		    -lm
 
 ifeq ($(CONFIG_LIBPCAP), 1)
 pktvisor-libs +=	-lpcap
 endif
 ifeq ($(CONFIG_GEOIP), 1)
-pktvisor-libs +=	-lGeoIP \
-			-lz
+pktvisor-libs +=	-lmaxminddb
 endif
 
 pktvisor-objs =	dissector.o \
@@ -85,5 +85,4 @@ pktvisor-eflags = $(shell pkg-config --cflags libnl-3.0) \
 pktvisor-confs =	ether.conf \
 			tcp.conf \
 			udp.conf \
-			oui.conf \
-			geoip.conf
+			oui.conf

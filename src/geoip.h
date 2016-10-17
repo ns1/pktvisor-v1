@@ -7,9 +7,8 @@
 #include "config.h"
 #include "die.h"
 
-#if defined(HAVE_GEOIP) && defined(HAVE_LIBZ)
+#if defined(HAVE_GEOIP)
 extern void init_geoip(const char* citydb, const char* asndb);
-extern void update_geoip(void);
 extern int geoip_working(void);
 extern const char *geoip4_city_name(struct sockaddr_in *sa);
 extern const char *geoip6_city_name(struct sockaddr_in6 *sa);
@@ -33,11 +32,6 @@ static inline void init_geoip(int enforce)
 
 static inline void destroy_geoip(void)
 {
-}
-
-static inline void update_geoip(void)
-{
-	panic("No built-in geoip support!\n");
 }
 
 static inline int geoip_working(void)
