@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 
 #include "dnsctxt.h"
+#include "xmalloc.h"
 
 // uthash LRU: https://gist.github.com/jehiah/900846
 
@@ -206,7 +207,7 @@ struct int32_entry *lru_get_int(struct int32_entry **table, uint32_t key)
 void lru_add_int(struct int32_entry **table, uint32_t key)
 {
     struct int32_entry *entry, *tmp_entry;
-    entry = malloc(sizeof(struct int32_entry));
+    entry = xmalloc(sizeof(struct int32_entry));
     entry->key = key;
     entry->count = 1;
     HASH_ADD(hh, *table, key, sizeof(uint32_t), entry);
@@ -240,7 +241,7 @@ struct str_entry *lru_get_str(struct str_entry **table, char *key)
 void lru_add_str(struct str_entry **table, char *key)
 {
     struct str_entry *entry, *tmp_entry;
-    entry = malloc(sizeof(struct str_entry));
+    entry = xmalloc(sizeof(struct str_entry));
     strncpy(entry->key, key, MAX_DNAME_LEN);
     entry->count = 1;
     HASH_ADD_STR(*table, key, entry);
