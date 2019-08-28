@@ -10,4 +10,3 @@ RUN apt-get update \
 USER root
 RUN mkdir /builder
 WORKDIR /builder
-COPY . .
