@@ -45,13 +45,6 @@ MAKEFLAGS += -rR
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --jobs=$(shell grep "^processor" /proc/cpuinfo | wc -l)
 
-# Debugging option
-ifeq ("$(origin DEBUG)", "command line")
-  DEBUG := 1
-else
-  DEBUG := 0
-endif
-
 # Compiler detection
 ifneq ($(CC),)
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
@@ -67,17 +60,14 @@ endif
 CFLAGS_DEF  = -std=gnu99
 CFLAGS_DEF += -pipe
 
-ifeq ($(DEBUG), 1)
+ifeq ($(DISTRO), 1)
   CFLAGS_DEF += -O2
   CFLAGS_DEF += -g
 else
- ifeq ($(DISTRO), 1)
-  CFLAGS_DEF += -O2
- else
   CFLAGS_DEF += -march=native
   CFLAGS_DEF += -mtune=native
   CFLAGS_DEF += -O3
- endif
+  CFLAGS_DEF += -g
 endif
 ifeq ($(HARDENING), 1)
   CFLAGS_DEF += -fPIE -pie
@@ -128,7 +118,7 @@ VERSION_LONG   = "$(VERSION_SHORT)$(CONFIG_RC) ($(NAME))"
 
 export VERSION PATCHLEVEL SUBLEVEL EXTRAVERSION
 export CROSS_COMPILE
-export DEBUG DISTRO HARDENING
+export DISTRO HARDENING
 
 bold   = $(shell tput bold)
 normal = $(shell tput sgr0)

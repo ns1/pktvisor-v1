@@ -65,7 +65,7 @@ struct ctx {
 	unsigned long kpull, dump_interval, tx_bytes, tx_packets;
 	size_t reserve_size;
     bool randomize, promiscuous, enforce, jumbo, dump_bpf, hwtimestamp, verbose,
-         ui;
+         ui, nolock;
     enum pcap_ops_groups pcap; enum dump_mode dump_mode;
     uid_t uid; gid_t gid; uint32_t link_type, magic;
     struct dnsctxt dns_ctxt;
@@ -74,7 +74,7 @@ struct ctx {
 static volatile sig_atomic_t sigint = 0;
 static volatile bool next_dump = false;
 
-static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXlvhF:GAP:Vu:g:T:DBUL:W:C:a:";
+static const char *short_options = "d:i:o:rf:MNJt:S:k:n:b:HQmcZYsqXxlvhF:GAP:Vu:g:T:DBUL:W:C:a:";
 static const struct option long_options[] = {
 	{"dev",			required_argument,	NULL, 'd'},
 	{"in",			required_argument,	NULL, 'i'},
@@ -89,6 +89,7 @@ static const struct option long_options[] = {
 	{"prefix",		required_argument,	NULL, 'P'},
 	{"user",		required_argument,	NULL, 'u'},
 	{"group",		required_argument,	NULL, 'g'},
+	{"nomemlock",  no_argument,	NULL, 'x'},
 	{"magic",		required_argument,	NULL, 'T'},
 	{"rand",		no_argument,		NULL, 'r'},
 //	{"rfraw",		no_argument,		NULL, 'R'},
@@ -1156,11 +1157,11 @@ static void init_ctx(struct ctx *ctx)
 	ctx->uid = getgid();
 
 	ctx->cpu = -1;
-    ctx->packet_type = -1;
-    ctx->local_prefix = -1;
+	ctx->packet_type = -1;
+	ctx->local_prefix = -1;
 
 	ctx->magic = ORIGINAL_TCPDUMP_MAGIC;
-    ctx->print_mode = PRINT_NONE;
+	ctx->print_mode = PRINT_NONE;
 	ctx->pcap = PCAP_OPS_SG;
 
 	ctx->dump_mode = DUMP_INTERVAL_TIME;
@@ -1168,9 +1169,9 @@ static void init_ctx(struct ctx *ctx)
 
 	ctx->promiscuous = true;
 	ctx->randomize = false;
-    ctx->hwtimestamp = true;
-    ctx->ui = false;
-
+	ctx->nolock = false;
+	ctx->hwtimestamp = true;
+	ctx->ui = false;
 }
 
 static void destroy_ctx(struct ctx *ctx)
@@ -1214,6 +1215,7 @@ static void __noreturn help(void)
 	     "  -b|--bind-cpu <cpu>            Bind to specific CPU\n"
 	     "  -u|--user <userid>             Drop privileges and change to userid\n"
 	     "  -g|--group <groupid>           Drop privileges and change to groupid\n"
+	     "  -x|--nolock                    Don't lock memory\n"
 	     "  -H|--prio-high                 Make this high priority process\n"
 	     "  -Q|--notouch-irq               Do not touch IRQ CPU affinity of NIC\n"
 	     "  -s|--silent                    Do not print captured packets\n"
@@ -1323,6 +1325,9 @@ int main(int argc, char **argv)
 		case 'g':
 			ctx.gid = strtoul(optarg, NULL, 0);
 			ctx.enforce = true;
+			break;
+		case 'x':
+			ctx.nolock = true;
 			break;
 		case 't':
 			if (!strncmp(optarg, "host", strlen("host")))
@@ -1581,7 +1586,7 @@ int main(int argc, char **argv)
     init_geoip(ctx.geoip_loc, ctx.geoip_asn);
 	if (setsockmem)
 		set_system_socket_memory(vals, array_size(vals));
-	if (!ctx.enforce)
+	if (!ctx.enforce && !ctx.nolock)
 		xlockme();
 
 	if (ctx.verbose)
@@ -1595,7 +1600,7 @@ int main(int argc, char **argv)
     if (ctx.ui)
         pktvisor_ui_shutdown();
 
-	if (!ctx.enforce)
+	if (!ctx.enforce && !ctx.nolock)
 		xunlockme();
 	if (setsockmem)
 		reset_system_socket_memory(vals, array_size(vals));
