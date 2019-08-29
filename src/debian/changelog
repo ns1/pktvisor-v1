@@ -1,3 +1,9 @@
+pktvisor (0.9.1-r2-1) precise; urgency=low
+
+  * Add -x|--nomemlock arg to prevent locking memory
+
+ -- Patrick Gray <pgray@ns1.com>  Thu, 29 Aug 2019 13:12:03 -0500
+
 pktvisor (0.9.1-r1-1) precise; urgency=low
 
   * Support for Maxmind's GeoIP2 library 
