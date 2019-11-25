@@ -1,3 +1,10 @@
+pktvisor (0.9.1-r3-1) precise; urgency=low
+
+  * Comment out strip in Makefile
+  * Fix help text for --nomemlock
+
+ -- Robert Lahnemann <rlahnemann@ns1.com>  Mon, 25 Nov 2019 10:54:24 -0500
+
 pktvisor (0.9.1-r2-1) precise; urgency=low
 
   * Add -x|--nomemlock arg to prevent locking memory

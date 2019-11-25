@@ -1215,7 +1215,7 @@ static void __noreturn help(void)
 	     "  -b|--bind-cpu <cpu>            Bind to specific CPU\n"
 	     "  -u|--user <userid>             Drop privileges and change to userid\n"
 	     "  -g|--group <groupid>           Drop privileges and change to groupid\n"
-	     "  -x|--nolock                    Don't lock memory\n"
+	     "  -x|--nomemlock                    Don't lock memory\n"
 	     "  -H|--prio-high                 Make this high priority process\n"
 	     "  -Q|--notouch-irq               Do not touch IRQ CPU affinity of NIC\n"
 	     "  -s|--silent                    Do not print captured packets\n"
