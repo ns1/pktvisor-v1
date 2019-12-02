@@ -16,7 +16,7 @@ endif
 VERSION = 0
 PATCHLEVEL = 9
 SUBLEVEL = 1
-EXTRAVERSION = -r2
+EXTRAVERSION = -r3
 NAME = Cilonen
 
 TOOLS ?= $(CONFIG_TOOLS)
@@ -175,4 +175,4 @@ $(foreach tool,$(TOOLS),$(eval $(call TOOL_templ,$(tool))))
 
 $(TOOLS):
 	$(LD) $(LDFLAGS) -o $@/$@ $@/*.o $($@-libs)
-	$(STRIP) $@/$@
+#	$(STRIP) $@/$@
