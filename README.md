@@ -1,5 +1,6 @@
 pktvisor - DNS protocol analyzer
 ================================
+> This project is in [maintenance status](https://github.com/ns1/community/blob/master/project_status/MAINTENANCE.md).
 
 This project is a fork and reorganization of netsniff-ng, available at
 http://netsniff-ng.org/
@@ -38,3 +39,7 @@ After building, you can even run pktvisor in a Docker:
 ```
 $ docker-compose run --rm pktvisor <options>
 ```
+
+Contributions
+---
+Pull Requests and issues are welcome. See the [NS1 Contribution Guidelines](https://github.com/ns1/community) for more information.
