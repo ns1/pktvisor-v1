@@ -1,6 +1,6 @@
 pktvisor - DNS protocol analyzer
 ================================
-> This project is in [maintenance status](https://github.com/ns1/community/blob/master/project_status/MAINTENANCE.md).
+> This project is in [deprecated status](https://github.com/ns1/community/blob/master/project_status/DEPRECATED.md). See https://github.com/ns1/pktvisor
 
 This project is a fork and reorganization of netsniff-ng, available at
 http://netsniff-ng.org/
